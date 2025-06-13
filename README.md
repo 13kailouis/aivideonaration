@@ -12,6 +12,10 @@ This contains everything you need to run your app locally.
 2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
 3. (Optional) Set the `PEXELS_API_KEY` in `.env.local` to enable higher-quality
    placeholder images from Pexels.
+   Placeholder images are now requested at a smaller resolution (960x540 or
+   540x960) to speed up the preview and avoid long preload times.
+   If an image fails to load during rendering, the app now substitutes a small
+   fallback image so video generation can continue rather than stalling.
 4. Run the app:
    `npm run dev`
 
