@@ -16,3 +16,11 @@ This contains everything you need to run your app locally.
    `npm run dev`
 
 The generated video will now download as an MP4 file.
+
+### Faster MP4 conversion
+
+The app uses ffmpeg.wasm to convert the rendered WebM file into an MP4 file
+directly in the browser. This conversion can be computationally intensive, so a
+fast preset (`ultrafast`) is enabled by default to speed up the process. If you
+prefer higher quality over speed you can modify the preset in
+`services/mp4ConversionService.ts`.
