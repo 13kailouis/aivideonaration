@@ -258,8 +258,8 @@ export const generateWebMFromScenes = (
 
     try {
         // Stage 1: Preload images (0% - 20% of progress)
-        preloadedImages = await preloadAllImages(scenes, (msg, val) => {
-            // console.log(`[Preload Progress] ${msg} - ${val}`); // Optional detailed logging
+        preloadedImages = await preloadAllImages(scenes, (_msg, val) => {
+            // console.log(`[Preload Progress] ${_msg} - ${val}`); // Optional detailed logging
             updateOverallProgress(val, 0.2, 0);
         });
 

@@ -1,6 +1,6 @@
 
 import React, { useState, useEffect, useRef } from 'react';
-import { Scene, AspectRatio, KenBurnsConfig } from '../types.ts';
+import { Scene, AspectRatio } from '../types.ts';
 import { PlayIcon, PauseIcon, DownloadIcon } from './IconComponents.tsx';
 
 const FADE_DURATION_MS = 1000; // 1 second for cross-fade
