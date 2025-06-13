@@ -19,7 +19,7 @@ This contains everything you need to run your app locally.
 4. Run the app:
    `npm run dev`
 
-If video downloads fail during MP4 conversion, ensure your browser is served with cross-origin isolation headers. The included `index.html` now specifies `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` meta tags, which are required for ffmpeg.wasm.
+Video downloads require the browser to be cross-origin isolated so that ffmpeg.wasm can use `SharedArrayBuffer`. The development server now automatically sends the necessary `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers. Make sure you access the app via `npm run dev` (or `npm run preview` after building) rather than opening `index.html` directly.
 
 The generated video will now download as an MP4 file.
 
