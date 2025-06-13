@@ -1,6 +1,6 @@
 // Timestamp: 2024-09-12T10:00:00Z - Refresh
 import { Scene, GeminiSceneResponseItem, KenBurnsConfig, AspectRatio } from '../types.ts';
-import { FALLBACK_FOOTAGE_KEYWORDS, AVERAGE_WORDS_PER_SECOND } from '../constants.ts';
+import { FALLBACK_FOOTAGE_KEYWORDS, AVERAGE_WORDS_PER_SECOND, PEXELS_API_KEY } from '../constants.ts';
 import { generateImageWithImagen } from './geminiService.ts';
 
 // Helper to generate Ken Burns configuration for a scene
@@ -24,24 +24,48 @@ const generateSceneKenBurnsConfig = (duration: number): KenBurnsConfig => {
 
 
 // Fetches a placeholder image URL based on keywords.
-export const fetchPlaceholderFootageUrl = (
-  keywords: string[], 
+export const fetchPlaceholderFootageUrl = async (
+  keywords: string[],
   aspectRatio: AspectRatio,
   sceneId?: string // Optional sceneId for more unique placeholders if needed
-): string => {
+): Promise<string> => {
   const width = aspectRatio === '16:9' ? 1280 : 720;
   const height = aspectRatio === '16:9' ? 720 : 1280;
-  
-  let seed = FALLBACK_FOOTAGE_KEYWORDS[Math.floor(Math.random() * FALLBACK_FOOTAGE_KEYWORDS.length)];
-  if (keywords && keywords.length > 0) {
-    seed = keywords.join('-').replace(/\s+/g, '-').toLowerCase();
+
+  const query = (keywords && keywords.length > 0)
+    ? keywords.join(' ')
+    : FALLBACK_FOOTAGE_KEYWORDS[Math.floor(Math.random() * FALLBACK_FOOTAGE_KEYWORDS.length)];
+
+  const orientation = aspectRatio === '16:9' ? 'landscape' : 'portrait';
+
+  if (PEXELS_API_KEY) {
+    try {
+      const resp = await fetch(
+        `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&orientation=${orientation}&per_page=50`,
+        { headers: { Authorization: PEXELS_API_KEY } }
+      );
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.photos && data.photos.length > 0) {
+          const photo = data.photos[Math.floor(Math.random() * data.photos.length)];
+          const url = photo.src.large2x || photo.src.large || photo.src.original;
+          return `${url}?random_bust=${Date.now()}`;
+        }
+      } else {
+        console.warn(`Pexels API request failed with ${resp.status}`);
+      }
+    } catch (err) {
+      console.warn('Error fetching from Pexels API:', err);
+    }
+  } else {
+    console.warn('PEXELS_API_KEY not set. Falling back to Picsum.');
   }
-  // Adding sceneId to seed for more variety if multiple scenes have same keywords
+
+  let seed = query.replace(/\s+/g, '-').toLowerCase();
   if (sceneId) {
     seed = `${seed}-${sceneId.substring(0,5)}`;
   }
-  // Removed ?grayscale from the URL
-  return `https://picsum.photos/seed/${seed}/${width}/${height}?random_bust=${Date.now()}`; 
+  return `https://picsum.photos/seed/${seed}/${width}/${height}?random_bust=${Date.now()}`;
 };
 
 export interface ProcessNarrationOptions {
@@ -103,7 +127,7 @@ export const processNarrationToScenes = async (
         imageGenError = imagenResult.userFriendlyError || 'AI image generation failed. Using placeholder.';
         console.warn(imageGenError, "Prompt:", item.imagePrompt);
         onProgress(imageGenError, (index + 1) / scenesToProcess.length, 'ai_image', index + 1, scenesToProcess.length, imageGenError);
-        footageUrl = fetchPlaceholderFootageUrl(item.keywords, aspectRatio, sceneId);
+        footageUrl = await fetchPlaceholderFootageUrl(item.keywords, aspectRatio, sceneId);
       }
     } else {
       onProgress(
@@ -113,7 +137,7 @@ export const processNarrationToScenes = async (
         index + 1,
         scenesToProcess.length
       );
-      footageUrl = fetchPlaceholderFootageUrl(item.keywords, aspectRatio, sceneId);
+      footageUrl = await fetchPlaceholderFootageUrl(item.keywords, aspectRatio, sceneId);
     }
     
     const kenBurnsConfig = generateSceneKenBurnsConfig(validatedDuration);

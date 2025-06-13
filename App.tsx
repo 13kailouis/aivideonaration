@@ -240,15 +240,16 @@ const App: React.FC = () => {
     if (ttsPlaybackStatus !== 'idle') handleTTSStop();
   };
 
-  const handleAddScene = () => {
+  const handleAddScene = async () => {
     const newSceneId = `scene-new-${Date.now()}`;
+    const placeholder = await fetchPlaceholderFootageUrl(["new scene", "abstract"], aspectRatio, newSceneId);
     const newScene: Scene = {
       id: newSceneId,
       sceneText: "New scene text...",
       keywords: ["new scene"],
       imagePrompt: "Abstract background for a new scene",
       duration: 5,
-      footageUrl: fetchPlaceholderFootageUrl(["new scene", "abstract"], aspectRatio, newSceneId), // Default placeholder
+      footageUrl: placeholder,
       kenBurnsConfig: { targetScale: 1.1, targetXPercent: 0, targetYPercent: 0, originXRatio: 0.5, originYRatio: 0.5, animationDurationS: 5 }
     };
     setScenes(prevScenes => [...prevScenes, newScene]);
@@ -274,12 +275,12 @@ const App: React.FC = () => {
                 newFootageUrl = result.base64Image;
             } else {
                 addWarning(result.userFriendlyError || `AI image failed for scene ${sceneId}. Using new placeholder.`);
-                newFootageUrl = fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-retry");
+                newFootageUrl = await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-retry");
                 errorOccurred = true;
             }
         } else {
             setProgressValue(30);
-            newFootageUrl = fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-refresh");
+            newFootageUrl = await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-refresh");
         }
         
         setScenes(prevScenes => prevScenes.map(s =>
