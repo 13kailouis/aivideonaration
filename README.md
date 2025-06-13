@@ -34,3 +34,23 @@ directly in the browser. This conversion can be computationally intensive, so a
 fast preset (`ultrafast`) is enabled by default to speed up the process. If you
 prefer higher quality over speed you can modify the preset in
 `services/mp4ConversionService.ts`.
+
+## Deploy to Vercel
+
+When deploying the built app to Vercel, you must ensure the necessary cross-origin isolation headers are sent with every request. Create a `vercel.json` file in the project root with the following contents:
+
+```json
+{
+  "headers": [
+    {
+      "source": "/(.*)",
+      "headers": [
+        { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
+        { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" }
+      ]
+    }
+  ]
+}
+```
+
+This configuration ensures Vercel serves the app with the required headers so that ffmpeg.wasm can operate correctly in the browser.
