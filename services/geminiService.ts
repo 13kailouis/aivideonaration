@@ -86,7 +86,7 @@ export const analyzeNarrationWithGemini = async (narrationText: string): Promise
       }
     });
 
-    let jsonStr = geminiApiResponse.text.trim();
+    let jsonStr = geminiApiResponse?.text?.trim() || '';
     const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
     const match = jsonStr.match(fenceRegex);
     if (match && match[2]) {

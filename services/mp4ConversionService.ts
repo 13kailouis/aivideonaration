@@ -6,8 +6,8 @@ export const convertWebMToMP4 = async (
   onProgress?: (progress: number) => void
 ): Promise<Blob> => {
   const ffmpeg = new FFmpeg();
-  ffmpeg.on('progress', ({ ratio }) => {
-    if (onProgress) onProgress(Math.min(1, ratio));
+  ffmpeg.on('progress', ({ progress }) => {
+    if (onProgress) onProgress(Math.min(1, progress));
   });
   if (!ffmpeg.loaded) {
     await ffmpeg.load();
@@ -25,5 +25,5 @@ export const convertWebMToMP4 = async (
     'output.mp4',
   ]);
   const data = await ffmpeg.readFile('output.mp4');
-  return new Blob([data.buffer], { type: 'video/mp4' });
+  return new Blob([data], { type: 'video/mp4' });
 };
