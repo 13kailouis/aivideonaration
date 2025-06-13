@@ -11,6 +11,7 @@ import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY } from './constants.ts';
 import { analyzeNarrationWithGemini, generateImageWithImagen } from './services/geminiService.ts';
 import { processNarrationToScenes, fetchPlaceholderFootageUrl, calculateDurationFromText } from './services/videoService.ts';
 import { generateWebMFromScenes } from './services/videoRenderingService.ts';
+import { convertWebMToMP4 } from './services/mp4ConversionService.ts';
 import { SparklesIcon } from './components/IconComponents.tsx';
 
 const App: React.FC = () => {
@@ -160,11 +161,11 @@ const App: React.FC = () => {
     setProgressValue(0);
 
     try {
-      const blob = await generateWebMFromScenes(
+      const webmBlob = await generateWebMFromScenes(
         scenes,
         aspectRatio,
         { includeSubtitles: includeSubtitlesOnDownload },
-        (p) => { 
+        (p) => {
           setProgressValue(Math.round(p * 100));
           if (p < 0.01) {
              setProgressMessage('Initializing video rendering...');
@@ -179,10 +180,16 @@ const App: React.FC = () => {
         }
       );
 
-      const url = URL.createObjectURL(blob);
+      setProgressMessage('Converting to MP4...');
+      const mp4Blob = await convertWebMToMP4(webmBlob, (convProg) => {
+        setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
+        setProgressValue(100 - Math.round((1 - convProg) * 5));
+      });
+
+      const url = URL.createObjectURL(mp4Blob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `narrative_video_${Date.now()}.webm`;
+      a.download = `narrative_video_${Date.now()}.mp4`;
       document.body.appendChild(a);
       a.click();
       document.body.removeChild(a);

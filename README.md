@@ -14,3 +14,5 @@ This contains everything you need to run your app locally.
    placeholder images from Pexels.
 4. Run the app:
    `npm run dev`
+
+The generated video will now download as an MP4 file.
