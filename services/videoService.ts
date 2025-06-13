@@ -58,14 +58,11 @@ export const fetchPlaceholderFootageUrl = async (
       console.warn('Error fetching from Pexels API:', err);
     }
   } else {
-    console.warn('PEXELS_API_KEY not set. Falling back to Picsum.');
+    console.warn('PEXELS_API_KEY not set. Falling back to loremflickr.');
   }
 
-  let seed = query.replace(/\s+/g, '-').toLowerCase();
-  if (sceneId) {
-    seed = `${seed}-${sceneId.substring(0,5)}`;
-  }
-  return `https://picsum.photos/seed/${seed}/${width}/${height}?random_bust=${Date.now()}`;
+  const encodedQuery = encodeURIComponent(query);
+  return `https://loremflickr.com/${width}/${height}/${encodedQuery}?lock=${sceneId || Date.now()}`;
 };
 
 export interface ProcessNarrationOptions {
