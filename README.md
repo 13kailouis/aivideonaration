@@ -20,6 +20,8 @@ This contains everything you need to run your app locally.
    `npm run dev`
 
 Video downloads require the browser to be cross-origin isolated so that ffmpeg.wasm can use `SharedArrayBuffer`. The development server now automatically sends the necessary `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers. Make sure you access the app via `npm run dev` (or `npm run preview` after building) rather than opening `index.html` directly.
+A local copy of `tailwind.js` is included to maintain cross-origin isolation. If you encounter the error "Browser is not cross-origin isolated" ensure you are running `npm run dev` and avoid loading external scripts without CORS headers.
+
 
 The generated video will now download as an MP4 file.
 
