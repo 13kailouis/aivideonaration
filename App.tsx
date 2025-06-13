@@ -160,6 +160,16 @@ const App: React.FC = () => {
     setProgressMessage('Initializing video rendering...');
     setProgressValue(0);
 
+    if (!window.crossOriginIsolated) {
+      const msg = 'Browser is not cross-origin isolated. MP4 conversion requires cross-origin isolation headers.';
+      console.error(msg);
+      setError(msg);
+      setProgressMessage('Unable to convert video without cross-origin isolation.');
+      setProgressValue(0);
+      setIsRenderingVideo(false);
+      return;
+    }
+
     try {
       const webmBlob = await generateWebMFromScenes(
         scenes,
@@ -186,12 +196,15 @@ const App: React.FC = () => {
         setProgressValue(100 - Math.round((1 - convProg) * 5));
       });
 
+      console.log('MP4 conversion complete. Blob size:', mp4Blob.size, 'bytes');
+
       const url = URL.createObjectURL(mp4Blob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `narrative_video_${Date.now()}.mp4`;
       document.body.appendChild(a);
       a.click();
+      console.log('Download link clicked.');
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
       setProgressMessage('Video downloaded!');
@@ -206,6 +219,9 @@ const App: React.FC = () => {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred while rendering video.';
       console.error("Error rendering video:", err);
       setError(errorMessage);
+      if (!window.crossOriginIsolated) {
+        console.error('MP4 conversion failed likely due to missing cross-origin isolation.');
+      }
       setProgressMessage('Error rendering video.');
       setProgressValue(0);
     } finally {
