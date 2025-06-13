@@ -29,8 +29,8 @@ export const fetchPlaceholderFootageUrl = async (
   aspectRatio: AspectRatio,
   sceneId?: string // Optional sceneId for more unique placeholders if needed
 ): Promise<string> => {
-  const width = aspectRatio === '16:9' ? 1280 : 720;
-  const height = aspectRatio === '16:9' ? 720 : 1280;
+  const width = aspectRatio === '16:9' ? 960 : 540; // smaller for faster downloads
+  const height = aspectRatio === '16:9' ? 540 : 960;
 
   const query = (keywords && keywords.length > 0)
     ? keywords.join(' ')

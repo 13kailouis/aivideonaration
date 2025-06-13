@@ -23,6 +23,9 @@ interface PreloadedImage {
   image: HTMLImageElement;
 }
 
+const FALLBACK_BASE64_IMAGE =
+  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO9z9zsAAAAASUVORK5CYII='; // 1x1 gray pixel
+
 function getCanvasDimensions(aspectRatio: AspectRatio): { width: number; height: number } {
   if (aspectRatio === '16:9') {
     const width = MAX_VIDEO_WIDTH_LANDSCAPE;
@@ -173,35 +176,44 @@ async function loadImageWithRetries(src: string, sceneId: string, sceneIndexForL
         const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
         await new Promise(res => setTimeout(res, delay));
       } else {
-        console.error(`All ${IMAGE_LOAD_RETRIES + 1} attempts to load image for scene ${sceneIndexForLog + 1} failed.`);
-        throw error; // Propagate error after all retries
+        console.error(`All ${IMAGE_LOAD_RETRIES + 1} attempts to load image for scene ${sceneIndexForLog + 1} failed. Using fallback image.`);
+        const fallbackImg = new Image();
+        fallbackImg.src = FALLBACK_BASE64_IMAGE;
+        await new Promise(res => { fallbackImg.onload = () => res(null); });
+        return fallbackImg;
       }
     }
   }
-  // This line should be unreachable due to throw in catch block
-  throw new Error(`Image loading failed for scene ${sceneIndexForLog + 1} (ID: ${sceneId}) after all retries.`);
+  const fallbackImg = new Image();
+  fallbackImg.src = FALLBACK_BASE64_IMAGE;
+  await new Promise(res => { fallbackImg.onload = () => res(null); });
+  return fallbackImg;
 }
 
 async function preloadAllImages(
-    scenes: Scene[], 
+    scenes: Scene[],
     onProgress: (message: string, value: number) => void
 ): Promise<PreloadedImage[]> {
     onProgress("Preloading images...", 0);
-    const imageLoadPromises: Promise<PreloadedImage>[] = scenes.map((scene, index) =>
-        loadImageWithRetries(scene.footageUrl, scene.id, index).then(image => {
-            onProgress(`Preloading images... (${index + 1}/${scenes.length})`, (index + 1) / scenes.length);
-            return { sceneId: scene.id, image };
-        })
-    );
-    
-    try {
-        const preloadedImages = await Promise.all(imageLoadPromises);
-        onProgress("All images preloaded.", 1);
-        return preloadedImages;
-    } catch (error) {
-        console.error("Failed to preload one or more images:", error);
-        throw new Error(`Failed to load images for video generation. ${(error as Error).message}`);
+    const results: PreloadedImage[] = [];
+    const concurrency = 3;
+    let index = 0;
+    let completed = 0;
+
+    async function worker() {
+        while (index < scenes.length) {
+            const i = index++;
+            const scene = scenes[i];
+            const img = await loadImageWithRetries(scene.footageUrl, scene.id, i);
+            results.push({ sceneId: scene.id, image: img });
+            completed++;
+            onProgress(`Preloading images... (${completed}/${scenes.length})`, completed / scenes.length);
+        }
     }
+
+    await Promise.all(Array(Math.min(concurrency, scenes.length)).fill(0).map(worker));
+    onProgress("All images preloaded.", 1);
+    return results;
 }
 
 
