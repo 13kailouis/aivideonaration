@@ -16,7 +16,7 @@ const TextInputArea: React.FC<TextInputAreaProps> = ({ value, onChange, placehol
       placeholder={placeholder || "Enter your narration here..."}
       disabled={disabled}
       rows={8}
-      className="w-full p-4 bg-gray-800 border border-gray-700 rounded-lg shadow-md focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 text-gray-200 placeholder-gray-500 resize-y transition-colors duration-150"
+      className="w-full p-4 bg-gray-900 border border-gray-800 rounded-lg shadow-md focus:ring-2 focus:ring-fuchsia-500 focus:border-fuchsia-500 text-gray-200 placeholder-gray-500 resize-y transition-colors duration-150"
     />
   );
 };
