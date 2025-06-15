@@ -60,17 +60,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         </button>
 
         <div id="features" className="grid gap-6 sm:grid-cols-3 max-w-4xl mt-12 mb-8 text-left">
-          <div className="p-6 bg-black rounded-xl shadow-lg">
+          <div className="p-6 bg-neutral-900 rounded-xl shadow-lg">
             <TrendingUpIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
             <h3 className="font-semibold text-white">Trend Analysis</h3>
             <p className="text-gray-400 text-sm mt-1">AI taps into viewer behavior so your content always hits the mark.</p>
           </div>
-          <div className="p-6 bg-black rounded-xl shadow-lg">
+          <div className="p-6 bg-neutral-900 rounded-xl shadow-lg">
             <ScissorsIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
             <h3 className="font-semibold text-white">No Editing Required</h3>
             <p className="text-gray-400 text-sm mt-1">Just talk. We handle visuals, timing and audio sync automatically.</p>
           </div>
-          <div className="p-6 bg-black rounded-xl shadow-lg">
+          <div className="p-6 bg-neutral-900 rounded-xl shadow-lg">
             <FireIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
             <h3 className="font-semibold text-white">Controversy Ready</h3>
             <p className="text-gray-400 text-sm mt-1">Create bold videos that spark engagement without the headaches.</p>
@@ -82,15 +82,15 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           <ul className="space-y-6 max-w-3xl mx-auto text-left text-lg">
             <li>
               <span className="text-fuchsia-500 font-semibold">Echo Chamber Amplifier:</span>
-              <span className="ml-1 text-gray-400">Analyzes viewer tribes and doubles down on the narratives they crave.</span>
+              <span className="ml-1 text-gray-400">Maps your audience factions and intensifies the angles they already love.</span>
             </li>
             <li>
               <span className="text-fuchsia-500 font-semibold">Trend Jacker:</span>
-              <span className="ml-1 text-gray-400">Injects real-time social spikes into your storylines for viral momentum.</span>
+              <span className="ml-1 text-gray-400">Splices trending memes and hashtags into your script for unstoppable reach.</span>
             </li>
             <li>
               <span className="text-fuchsia-500 font-semibold">Polarizing Hook Generator:</span>
-              <span className="ml-1 text-gray-400">Crafts openings designed to split opinions and fuel comment wars.</span>
+              <span className="ml-1 text-gray-400">Engineers intros that divide camps instantly and ignite comment storms.</span>
             </li>
           </ul>
         </section>
