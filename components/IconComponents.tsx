@@ -67,3 +67,24 @@ export const FireIcon: React.FC<{ className?: string }> = ({ className }) => (
     <path d="M9.879 16.121a3 3 0 0 0 4.242 0c.586-.586.879-1.354.879-2.121s-.293-1.535-.879-2.121C13.539 11.296 12.778 11 12 11v3l-2 .001c0 .768.293 1.536.879 2.12Z" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+
+export const EyeIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7S1 12 1 12Z" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="12" cy="12" r="3" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const ShieldIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M12 2l7 4v5c0 5.523-3.806 10.74-7 11-3.194-.26-7-5.477-7-11V6l7-4Z" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M12 11v5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M9 14h6" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const BoltIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M13 2L3 14h7v8l10-12h-7l0-8Z" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
