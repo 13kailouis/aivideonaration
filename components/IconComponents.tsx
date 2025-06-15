@@ -67,3 +67,25 @@ export const FireIcon: React.FC<{ className?: string }> = ({ className }) => (
     <path d="M9.879 16.121a3 3 0 0 0 4.242 0c.586-.586.879-1.354.879-2.121s-.293-1.535-.879-2.121C13.539 11.296 12.778 11 12 11v3l-2 .001c0 .768.293 1.536.879 2.12Z" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+
+export const EyeIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M1 12s4-7 11-7 11 7 11 7-4 7-11 7-11-7-11-7z" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="12" cy="12" r="3" />
+  </svg>
+);
+
+export const RefreshIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M4 4v5h5M20 20v-5h-5" strokeLinecap="round" strokeLinejoin="round" />
+    <path d="M5 9a7 7 0 0114 0M19 15a7 7 0 01-14 0" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const UsersIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M16 21v-2a4 4 0 00-3-3.87M8 21v-2a4 4 0 013-3.87" strokeLinecap="round" strokeLinejoin="round" />
+    <circle cx="12" cy="7" r="4" />
+    <path d="M17 11a4 4 0 010-8" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
