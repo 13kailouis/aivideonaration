@@ -6,7 +6,7 @@
     <title>CineSynth</title>
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-    <link href="https://fonts.googleapis.com/css2?family=Sora:wght@400;600;700&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;600;700&family=Fira+Code:wght@400;600&display=swap" rel="stylesheet">
     <meta http-equiv="Cross-Origin-Opener-Policy" content="same-origin" />
     <meta http-equiv="Cross-Origin-Embedder-Policy" content="require-corp" />
     <script type="module" src="/tailwind.js"></script>
@@ -27,6 +27,40 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #777;
       }
+
+      body {
+        font-family: 'Poppins', sans-serif;
+        background: #0e0b14;
+      }
+
+      h1, h2, h3, h4, h5 {
+        font-family: 'Fira Code', monospace;
+      }
+
+      .brand-gradient {
+        background: linear-gradient(135deg, #d946ef, #8b5cf6);
+      }
+
+      @keyframes gradientShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+
+      .animated-bg {
+        background: linear-gradient(270deg, #d946ef, #8b5cf6, #e879f9);
+        background-size: 600% 600%;
+        animation: gradientShift 15s ease infinite;
+      }
+
+      .brand-button {
+        background-color: #d946ef;
+        color: #fff;
+      }
+
+      .brand-button:hover {
+        background-color: #c026d3;
+      }
     </style>
   <script type="importmap">
 {
@@ -40,7 +74,7 @@
 </script>
   <!-- WebM Writer library removed -->
 </head>
-  <body class="bg-black text-white antialiased" style="font-family: 'Sora', sans-serif;">
+  <body class="text-white antialiased animated-bg min-h-screen">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>

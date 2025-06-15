@@ -279,7 +279,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
   if (isGenerating && scenes.length === 0) {
      return (
       <div className={`w-full bg-gray-800 rounded-lg shadow-lg flex flex-col items-center justify-center text-gray-400 ${aspectRatio === '16:9' ? 'aspect-video' : 'aspect-[9/16]'}`}>
-        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-teal-500 mb-4"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-fuchsia-500 mb-4"></div>
         <p>Generating scenes & visuals...</p>
       </div>
     );
@@ -303,12 +303,12 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
           ) : null
         ))}
         {currentScene && isPlaying && (
-            <div className="absolute top-0 left-0 h-1 bg-teal-600 transition-all duration-100 ease-linear" style={{ width: `${(elapsedTime / ((currentScene?.duration || 1) * 1000)) * 100}%` }}></div>
+            <div className="absolute top-0 left-0 h-1 bg-fuchsia-600 transition-all duration-100 ease-linear" style={{ width: `${(elapsedTime / ((currentScene?.duration || 1) * 1000)) * 100}%` }}></div>
         )}
       </div>
       {scenes.length > 0 && (
         <div className="mt-2 h-2 bg-gray-700 rounded-full overflow-hidden">
-          <div className="h-full bg-teal-500" style={{ width: `${totalDuration > 0 ? (playedDuration / totalDuration) * 100 : 0}%`, transition: playedDuration > 0 ? 'width 0.1s linear' : 'none' }}></div>
+          <div className="h-full bg-fuchsia-500" style={{ width: `${totalDuration > 0 ? (playedDuration / totalDuration) * 100 : 0}%`, transition: playedDuration > 0 ? 'width 0.1s linear' : 'none' }}></div>
         </div>
       )}
       <div className="mt-3 flex items-center justify-between space-x-2">
@@ -316,7 +316,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
           <button
             onClick={handlePlayPause}
             disabled={scenes.length === 0 || isGenerating || isDownloading}
-            className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 disabled:opacity-50 transition-colors text-teal-400 hover:text-teal-300"
+            className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 disabled:opacity-50 transition-colors text-fuchsia-400 hover:text-fuchsia-300"
             aria-label={isPlaying ? "Pause" : "Play"}
           >
             {isPlaying ? <PauseIcon className="w-5 h-5 sm:w-6 sm:h-6" /> : <PlayIcon className="w-5 h-5 sm:w-6 sm:h-6" />}
@@ -324,7 +324,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
            <button
             onClick={handleRestart}
             disabled={scenes.length === 0 || isGenerating || isDownloading}
-            className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 disabled:opacity-50 transition-colors text-sm text-teal-400 hover:text-teal-300"
+            className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 disabled:opacity-50 transition-colors text-sm text-fuchsia-400 hover:text-fuchsia-300"
             aria-label="Restart"
           >
             Restart
@@ -339,7 +339,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
         <button
           onClick={onDownloadRequest}
           disabled={scenes.length === 0 || isGenerating || isDownloading}
-          className="flex items-center px-3 py-2 sm:px-4 sm:py-2.5 bg-teal-600 hover:bg-teal-700 disabled:opacity-50 text-white text-xs sm:text-sm font-medium rounded-md shadow-sm transition-colors"
+          className="flex items-center px-3 py-2 sm:px-4 sm:py-2.5 bg-fuchsia-600 hover:bg-fuchsia-700 disabled:opacity-50 text-white text-xs sm:text-sm font-medium rounded-md shadow-sm transition-colors"
           aria-live="polite"
         >
           <DownloadIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />

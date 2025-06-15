@@ -12,7 +12,7 @@ const ProgressBar: React.FC<ProgressBarProps> = ({ progress, message }) => {
       {message && <p className="text-sm text-gray-400 mb-1 text-center">{message}</p>}
       <div className="w-full bg-gray-700 rounded-full h-2.5">
         <div
-          className="bg-teal-500 h-2.5 rounded-full transition-all duration-300 ease-out"
+          className="bg-fuchsia-500 h-2.5 rounded-full transition-all duration-300 ease-out"
           style={{ width: `${progress}%` }}
         ></div>
       </div>
