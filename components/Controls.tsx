@@ -39,7 +39,7 @@ const Controls: React.FC<ControlsProps> = ({
   const canGenerate = !isGenerating && narrationText.trim() !== '' && !apiKeyMissing;
 
   return (
-    <div className="p-4 bg-gray-900 rounded-lg shadow-lg space-y-6">
+    <div className="p-4 bg-gray-800 rounded-lg shadow-lg space-y-6">
       <div>
         <label className="block text-sm font-medium text-gray-300 mb-2">Aspect Ratio</label>
         <div className="flex space-x-2">
