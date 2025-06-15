@@ -1,5 +1,5 @@
 
-export const APP_TITLE = "Narrative Video Automator";
+export const APP_TITLE = "CineSynth";
 export const DEFAULT_ASPECT_RATIO = '16:9';
 export const AVERAGE_WORDS_PER_SECOND = 3; // Fallback if Gemini doesn't provide duration
 
