@@ -1,5 +1,6 @@
 import React from 'react';
 import { SparklesIcon } from './IconComponents.tsx';
+import Navbar from './Navbar.tsx';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -8,15 +9,7 @@ interface LandingPageProps {
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
   return (
     <div className="min-h-screen flex flex-col bg-black text-white">
-      <header className="p-6 flex justify-between items-center">
-        <h1 className="text-3xl font-bold text-fuchsia-500" style={{fontFamily:'Fira Code'}}>CineSynth</h1>
-        <button
-          className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-4 py-2 rounded-md shadow-lg"
-          onClick={onGetStarted}
-        >
-          Launch App
-        </button>
-      </header>
+      <Navbar rightButtonText="Launch App" onRightButtonClick={onGetStarted} />
       <main className="flex-1 flex flex-col items-center justify-center text-center px-4">
         <h2 className="text-4xl sm:text-6xl font-extrabold mb-6">
           Your Marketing Video Sidekick

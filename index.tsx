@@ -5,7 +5,11 @@ import LandingPage from './components/LandingPage.tsx';
 
 const Root: React.FC = () => {
   const [started, setStarted] = useState(false);
-  return started ? <App /> : <LandingPage onGetStarted={() => setStarted(true)} />;
+  return started ? (
+    <App onGoHome={() => setStarted(false)} />
+  ) : (
+    <LandingPage onGetStarted={() => setStarted(true)} />
+  );
 };
 
 const rootElement = document.getElementById('root');
