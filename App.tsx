@@ -13,8 +13,13 @@ import { processNarrationToScenes, fetchPlaceholderFootageUrl } from './services
 import { generateWebMFromScenes } from './services/videoRenderingService.ts';
 import { convertWebMToMP4 } from './services/mp4ConversionService.ts';
 import { SparklesIcon } from './components/IconComponents.tsx';
+import Navbar from './components/Navbar.tsx';
 
-const App: React.FC = () => {
+interface AppProps {
+  onBack: () => void;
+}
+
+const App: React.FC<AppProps> = ({ onBack }) => {
   const [narrationText, setNarrationText] = useState<string>('');
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(DEFAULT_ASPECT_RATIO);
@@ -325,18 +330,9 @@ const App: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col items-center p-4 sm:p-6 lg:p-8">
-      <header className="mb-6 sm:mb-8 text-center">
-        <div className="flex items-center justify-center space-x-3">
-           <SparklesIcon className="w-8 h-8 sm:w-10 sm:h-10 text-teal-400" />
-           <h1 className="text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-r from-teal-300 via-teal-400 to-cyan-400 text-transparent bg-clip-text">
-             {APP_TITLE}
-           </h1>
-        </div>
-        <p className="mt-2 text-base sm:text-lg text-gray-400">
-          Transform text into videos with AI-powered visuals and spoken narration.
-        </p>
-      </header>
+    <div className="min-h-screen bg-black text-gray-100 flex flex-col items-center">
+      <Navbar onBack={onBack} />
+      <div className="w-full px-4 sm:px-6 lg:px-8 py-6 flex flex-col items-center">
 
       {apiKeyMissing && (
          <div className="w-full max-w-3xl p-4 mb-6 bg-red-800 border border-red-700 text-red-100 rounded-md shadow-lg text-center">
@@ -346,8 +342,8 @@ const App: React.FC = () => {
 
       <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-teal-300">1. Enter Your Narration</h2>
+          <div className="bg-gray-900 border border-fuchsia-700 p-4 sm:p-6 rounded-xl shadow-2xl">
+            <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-fuchsia-300">1. Enter Your Narration</h2>
             <TextInputArea
               value={narrationText}
               onChange={setNarrationText}
@@ -355,8 +351,8 @@ const App: React.FC = () => {
               disabled={isGeneratingScenes || apiKeyMissing || isRenderingVideo}
             />
           </div>
-          <div className="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl">
-             <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-teal-300">2. Configure & Generate</h2>
+          <div className="bg-gray-900 border border-fuchsia-700 p-4 sm:p-6 rounded-xl shadow-2xl">
+             <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-fuchsia-300">2. Configure & Generate</h2>
             <Controls
               aspectRatio={aspectRatio}
               onAspectRatioChange={(ratio) => {
@@ -381,8 +377,8 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="lg:col-span-2 bg-gray-800 p-1 sm:p-2 rounded-xl shadow-2xl">
-           <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4 text-teal-300 px-3 py-2">3. Preview Your Video</h2>
+        <div className="lg:col-span-2 bg-gray-900 border border-fuchsia-700 p-1 sm:p-2 rounded-xl shadow-2xl">
+           <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4 text-fuchsia-300 px-3 py-2">3. Preview Your Video</h2>
           <VideoPreview
             scenes={scenes}
             aspectRatio={aspectRatio}
@@ -445,6 +441,7 @@ const App: React.FC = () => {
         <p>Visuals can be AI-generated or placeholders. Narration preview with TTS. WebM video download.</p>
       </footer>
     </div>
+  </div>
   );
 };
 
