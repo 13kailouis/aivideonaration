@@ -7,11 +7,11 @@ interface LandingPageProps {
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
   return (
-    <div className="min-h-screen flex flex-col bg-black text-white">
+    <div className="min-h-screen flex flex-col animated-bg text-white">
       <header className="p-6 flex justify-between items-center">
         <h1 className="text-3xl font-bold text-fuchsia-500" style={{fontFamily:'Fira Code'}}>CineSynth</h1>
         <button
-          className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-4 py-2 rounded-md shadow-lg"
+          className="brand-button hover:bg-fuchsia-500 px-4 py-2 rounded-md shadow-lg"
           onClick={onGetStarted}
         >
           Launch App
@@ -42,7 +42,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
         <button
           onClick={onGetStarted}
-          className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-lg px-8 py-4 rounded-full shadow-xl flex items-center gap-2"
+          className="brand-button hover:bg-fuchsia-500 text-lg px-8 py-4 rounded-full shadow-xl flex items-center gap-2"
         >
           <SparklesIcon className="w-6 h-6" />
           Get Started
