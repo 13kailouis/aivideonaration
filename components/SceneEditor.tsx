@@ -57,12 +57,12 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
 
   return (
     <div className="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl">
-      <h3 className="text-xl sm:text-2xl font-semibold mb-4 text-teal-300">4. Edit Scenes</h3>
+      <h3 className="text-xl sm:text-2xl font-semibold mb-4 text-fuchsia-300">4. Edit Scenes</h3>
       {scenes.length === 0 && <p className="text-gray-400">No scenes generated yet. Use Step 1 & 2.</p>}
       <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
         {scenes.map((scene, index) => (
           <div key={scene.id} className="bg-gray-700 p-4 rounded-lg shadow-md">
-            <h4 className="font-semibold text-teal-400 mb-2">Scene {index + 1}</h4>
+            <h4 className="font-semibold text-fuchsia-400 mb-2">Scene {index + 1}</h4>
             {editableSceneId === scene.id ? (
               <div className="space-y-3">
                 <div>
@@ -72,7 +72,7 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     rows={3}
-                    className="w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-gray-200 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-gray-200 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                     disabled={isGenerating}
                   />
                 </div>
@@ -84,7 +84,7 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
                     value={editDuration}
                     onChange={(e) => setEditDuration(Math.max(1, parseInt(e.target.value, 10) || 1))}
                     min="1"
-                    className="w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-gray-200 focus:ring-teal-500 focus:border-teal-500"
+                    className="w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-gray-200 focus:ring-fuchsia-500 focus:border-fuchsia-500"
                     disabled={isGenerating}
                   />
                 </div>
@@ -92,7 +92,7 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
                   <button
                     onClick={() => handleSave(scene.id)}
                     disabled={isGenerating}
-                    className="px-3 py-1.5 text-sm bg-teal-600 hover:bg-teal-700 rounded-md text-white disabled:opacity-50"
+                    className="px-3 py-1.5 text-sm bg-fuchsia-600 hover:bg-fuchsia-700 rounded-md text-white disabled:opacity-50"
                   >
                     Save Changes
                   </button>
@@ -125,14 +125,14 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
                   <button
                     onClick={() => handleEdit(scene)}
                     disabled={isGenerating || isUpdatingImage === scene.id}
-                    className="px-3 py-1.5 text-xs bg-teal-600 hover:bg-teal-700 rounded-md text-white disabled:opacity-50"
+                    className="px-3 py-1.5 text-xs bg-fuchsia-600 hover:bg-fuchsia-700 rounded-md text-white disabled:opacity-50"
                   >
                     Edit Scene
                   </button>
                   <button
                     onClick={() => handleImageUpdate(scene.id)}
                     disabled={isGenerating || apiKeyMissing || isUpdatingImage === scene.id}
-                    className="px-3 py-1.5 text-xs bg-teal-600 hover:bg-teal-700 rounded-md text-white disabled:opacity-50 flex items-center"
+                    className="px-3 py-1.5 text-xs bg-fuchsia-600 hover:bg-fuchsia-700 rounded-md text-white disabled:opacity-50 flex items-center"
                     title={apiKeyMissing && useAiImagesGlobal ? "API Key missing, cannot generate AI image" : (useAiImagesGlobal ? "Refresh AI Image" : "Refresh Placeholder")}
                   >
                      {isUpdatingImage === scene.id ? (
@@ -158,7 +158,7 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
       <button
         onClick={onAddScene}
         disabled={isGenerating}
-        className="mt-6 w-full px-4 py-2 bg-teal-600 hover:bg-teal-700 rounded-md text-white font-medium disabled:opacity-50"
+        className="mt-6 w-full px-4 py-2 bg-fuchsia-600 hover:bg-fuchsia-700 rounded-md text-white font-medium disabled:opacity-50"
       >
         Add New Scene
       </button>
