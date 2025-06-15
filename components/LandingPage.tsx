@@ -1,5 +1,15 @@
 import React, { useState } from 'react';
-import { SparklesIcon, MenuIcon, CloseIcon, TrendingUpIcon, ScissorsIcon, FireIcon } from './IconComponents.tsx';
+import {
+  SparklesIcon,
+  MenuIcon,
+  CloseIcon,
+  TrendingUpIcon,
+  ScissorsIcon,
+  FireIcon,
+  EyeIcon,
+  RefreshIcon,
+  UsersIcon,
+} from './IconComponents.tsx';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -29,10 +39,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           </button>
         </nav>
         {menuOpen && (
-          <div className="sm:hidden px-4 pb-4 space-y-2">
-            <a href="#features" className="block py-2" onClick={() => setMenuOpen(false)}>Features</a>
+          <div className="sm:hidden fixed inset-0 bg-black/80 backdrop-blur-md flex flex-col items-center justify-center space-y-6 z-20">
+            <a href="#features" className="text-xl" onClick={() => setMenuOpen(false)}>Features</a>
             <button
-              className="w-full bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-4 py-2 rounded-md shadow-lg"
+              className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-6 py-3 rounded-md shadow-lg"
               onClick={() => { setMenuOpen(false); onGetStarted(); }}
             >
               Launch App
@@ -48,24 +58,6 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           Stop wasting hours editing. CineSynth turns your script into shareable videos in minutes&mdash;perfect for busy YouTubers and marketing strategists.
         </p>
 
-        <div id="features" className="grid gap-6 sm:grid-cols-3 max-w-4xl mb-8 text-left">
-          <div className="p-6 bg-gray-900 rounded-xl shadow-lg">
-            <TrendingUpIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
-            <h3 className="font-semibold text-white">Trend Analysis</h3>
-            <p className="text-gray-400 text-sm mt-1">AI taps into viewer behavior so your content always hits the mark.</p>
-          </div>
-          <div className="p-6 bg-gray-900 rounded-xl shadow-lg">
-            <ScissorsIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
-            <h3 className="font-semibold text-white">No Editing Required</h3>
-            <p className="text-gray-400 text-sm mt-1">Just talk. We handle visuals, timing and audio sync automatically.</p>
-          </div>
-          <div className="p-6 bg-gray-900 rounded-xl shadow-lg">
-            <FireIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
-            <h3 className="font-semibold text-white">Controversy Ready</h3>
-            <p className="text-gray-400 text-sm mt-1">Create bold videos that spark engagement without the headaches.</p>
-          </div>
-        </div>
-
         <button
           onClick={onGetStarted}
           className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-lg px-8 py-4 rounded-full shadow-xl flex items-center gap-2"
@@ -73,6 +65,42 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           <SparklesIcon className="w-6 h-6" />
           Get Started
         </button>
+
+        <div id="features" className="grid gap-6 sm:grid-cols-3 max-w-4xl my-8 text-left">
+          <div className="p-6 bg-gradient-to-br from-gray-800 to-black rounded-xl shadow-lg">
+            <TrendingUpIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
+            <h3 className="font-semibold text-white">Trend Analysis</h3>
+            <p className="text-gray-400 text-sm mt-1">AI taps into viewer behavior so your content always hits the mark.</p>
+          </div>
+          <div className="p-6 bg-gradient-to-br from-gray-800 to-black rounded-xl shadow-lg">
+            <ScissorsIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
+            <h3 className="font-semibold text-white">No Editing Required</h3>
+            <p className="text-gray-400 text-sm mt-1">Just talk. We handle visuals, timing and audio sync automatically.</p>
+          </div>
+          <div className="p-6 bg-gradient-to-br from-gray-800 to-black rounded-xl shadow-lg">
+            <FireIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
+            <h3 className="font-semibold text-white">Controversy Ready</h3>
+            <p className="text-gray-400 text-sm mt-1">Create bold videos that spark engagement without the headaches.</p>
+          </div>
+        </div>
+
+        <div className="grid gap-6 sm:grid-cols-3 max-w-4xl my-8 text-left">
+          <div className="p-6 bg-gradient-to-br from-gray-800 to-black rounded-xl shadow-lg">
+            <EyeIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
+            <h3 className="font-semibold text-white">Audience Polarization</h3>
+            <p className="text-gray-400 text-sm mt-1">Spot segments that will ignite debate and keep viewers glued to the comments.</p>
+          </div>
+          <div className="p-6 bg-gradient-to-br from-gray-800 to-black rounded-xl shadow-lg">
+            <RefreshIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
+            <h3 className="font-semibold text-white">Instant Remix</h3>
+            <p className="text-gray-400 text-sm mt-1">One click to re-cut your video for any platform—shorts, reels or stories.</p>
+          </div>
+          <div className="p-6 bg-gradient-to-br from-gray-800 to-black rounded-xl shadow-lg">
+            <UsersIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
+            <h3 className="font-semibold text-white">Reaction Simulator</h3>
+            <p className="text-gray-400 text-sm mt-1">Predict how influencers and communities might respond before you publish.</p>
+          </div>
+        </div>
       </main>
       <footer className="p-4 text-center text-gray-500 text-sm">
         <p>&copy; {new Date().getFullYear()} CineSynth. AI that disrupts filmmaking.</p>
