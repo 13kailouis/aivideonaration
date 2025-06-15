@@ -350,7 +350,7 @@ const App: React.FC = () => {
 
       <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl">
+          <div className="bg-purple-950 p-4 sm:p-6 rounded-xl shadow-2xl">
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-fuchsia-400" style={{ fontFamily: 'Fira Code' }}>1. Enter Your Narration</h2>
             <TextInputArea
               value={narrationText}
@@ -359,7 +359,7 @@ const App: React.FC = () => {
               disabled={isGeneratingScenes || apiKeyMissing || isRenderingVideo}
             />
           </div>
-          <div className="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl">
+          <div className="bg-purple-950 p-4 sm:p-6 rounded-xl shadow-2xl">
              <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-fuchsia-400" style={{ fontFamily: 'Fira Code' }}>2. Configure & Generate</h2>
             <Controls
               aspectRatio={aspectRatio}
@@ -385,7 +385,7 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="lg:col-span-2 bg-gray-800 p-1 sm:p-2 rounded-xl shadow-2xl">
+        <div className="lg:col-span-2 bg-purple-950 p-1 sm:p-2 rounded-xl shadow-2xl">
            <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4 text-fuchsia-400 px-3 py-2" style={{ fontFamily: 'Fira Code' }}>3. Preview Your Video</h2>
           <VideoPreview
             scenes={scenes}

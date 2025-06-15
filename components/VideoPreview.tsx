@@ -270,7 +270,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
 
   if (scenes.length === 0 && !isGenerating) {
     return (
-      <div className={`w-full bg-gray-800 rounded-lg shadow-lg flex items-center justify-center text-gray-500 ${aspectRatio === '16:9' ? 'aspect-video' : 'aspect-[9/16]'}`}>
+      <div className={`w-full bg-purple-950 rounded-lg shadow-lg flex items-center justify-center text-gray-500 ${aspectRatio === '16:9' ? 'aspect-video' : 'aspect-[9/16]'}`}>
         Enter narration and click "Generate Video" to see preview.
       </div>
     );
@@ -278,7 +278,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
 
   if (isGenerating && scenes.length === 0) {
      return (
-      <div className={`w-full bg-gray-800 rounded-lg shadow-lg flex flex-col items-center justify-center text-gray-400 ${aspectRatio === '16:9' ? 'aspect-video' : 'aspect-[9/16]'}`}>
+      <div className={`w-full bg-purple-950 rounded-lg shadow-lg flex flex-col items-center justify-center text-gray-400 ${aspectRatio === '16:9' ? 'aspect-video' : 'aspect-[9/16]'}`}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-fuchsia-500 mb-4"></div>
         <p>Generating scenes & visuals...</p>
       </div>
@@ -289,7 +289,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
   const playedDuration = scenes.slice(0, currentSceneIndex).reduce((sum, s) => sum + s.duration, 0) + (elapsedTime / 1000);
 
   return (
-    <div className="bg-gray-800 p-1 sm:p-2 rounded-lg shadow-xl">
+    <div className="bg-purple-950 p-1 sm:p-2 rounded-lg shadow-xl">
       <div className={`relative w-full ${footageAspectRatioClass} bg-black overflow-hidden rounded-md`}>
         {imageSlots.map((slot, index) => (
           slot.scene ? (
