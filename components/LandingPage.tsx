@@ -60,39 +60,41 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         </button>
 
         <div id="features" className="grid gap-6 sm:grid-cols-3 max-w-4xl mt-12 mb-8 text-left">
-          <div className="p-6 bg-black rounded-xl shadow-lg">
+          <div className="p-6 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl shadow-lg border border-gray-700">
             <TrendingUpIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
-            <h3 className="font-semibold text-white">Trend Analysis</h3>
-            <p className="text-gray-400 text-sm mt-1">AI taps into viewer behavior so your content always hits the mark.</p>
+            <h3 className="font-semibold text-white">AI Trend Radar</h3>
+            <p className="text-gray-400 text-sm mt-1">Our algorithm hunts down the hottest topics so your message always lands.</p>
           </div>
-          <div className="p-6 bg-black rounded-xl shadow-lg">
+          <div className="p-6 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl shadow-lg border border-gray-700">
             <ScissorsIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
-            <h3 className="font-semibold text-white">No Editing Required</h3>
-            <p className="text-gray-400 text-sm mt-1">Just talk. We handle visuals, timing and audio sync automatically.</p>
+            <h3 className="font-semibold text-white">Hands-Free Production</h3>
+            <p className="text-gray-400 text-sm mt-1">Just speak your script. We handle the scenes, pacing and polish automatically.</p>
           </div>
-          <div className="p-6 bg-black rounded-xl shadow-lg">
+          <div className="p-6 bg-gradient-to-br from-gray-900 via-gray-800 to-gray-900 rounded-xl shadow-lg border border-gray-700">
             <FireIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
-            <h3 className="font-semibold text-white">Controversy Ready</h3>
-            <p className="text-gray-400 text-sm mt-1">Create bold videos that spark engagement without the headaches.</p>
+            <h3 className="font-semibold text-white">Built-In Shock Factor</h3>
+            <p className="text-gray-400 text-sm mt-1">Make daring videos that spark debates while staying brand-safe.</p>
           </div>
         </div>
 
         <section className="w-full py-12 border-t border-gray-800 mt-8">
           <h3 className="text-3xl font-bold mb-8 text-center">Disruptive Extras</h3>
-          <ul className="space-y-6 max-w-3xl mx-auto text-left text-lg">
-            <li>
-              <span className="text-fuchsia-500 font-semibold">Echo Chamber Amplifier:</span>
-              <span className="ml-1 text-gray-400">Analyzes viewer tribes and doubles down on the narratives they crave.</span>
-            </li>
-            <li>
-              <span className="text-fuchsia-500 font-semibold">Trend Jacker:</span>
-              <span className="ml-1 text-gray-400">Injects real-time social spikes into your storylines for viral momentum.</span>
-            </li>
-            <li>
-              <span className="text-fuchsia-500 font-semibold">Polarizing Hook Generator:</span>
-              <span className="ml-1 text-gray-400">Crafts openings designed to split opinions and fuel comment wars.</span>
-            </li>
-          </ul>
+          <div className="bg-gray-900/50 p-6 rounded-xl shadow-inner">
+            <ul className="space-y-6 max-w-3xl mx-auto text-left text-lg">
+              <li>
+                <span className="text-fuchsia-500 font-semibold">Echo Chamber Amplifier:</span>
+                <span className="ml-1 text-gray-400">Pinpoints your most fervent fans and intensifies the narratives they obsess over.</span>
+              </li>
+              <li>
+                <span className="text-fuchsia-500 font-semibold">Trend Jacker:</span>
+                <span className="ml-1 text-gray-400">Surges your script with up-to-the-second social spikes for unstoppable virality.</span>
+              </li>
+              <li>
+                <span className="text-fuchsia-500 font-semibold">Polarizing Hook Generator:</span>
+                <span className="ml-1 text-gray-400">Engineers divisive openings guaranteed to ignite comment wars and drive watch time.</span>
+              </li>
+            </ul>
+          </div>
         </section>
       </main>
       <footer className="p-4 text-center text-gray-500 text-sm">
