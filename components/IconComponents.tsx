@@ -67,3 +67,21 @@ export const FireIcon: React.FC<{ className?: string }> = ({ className }) => (
     <path d="M9.879 16.121a3 3 0 0 0 4.242 0c.586-.586.879-1.354.879-2.121s-.293-1.535-.879-2.121C13.539 11.296 12.778 11 12 11v3l-2 .001c0 .768.293 1.536.879 2.12Z" strokeLinecap="round" strokeLinejoin="round" />
   </svg>
 );
+
+export const PulseIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M2 12h4l3-8 4 16 3-8h4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
+
+export const BoltIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="currentColor">
+    <path d="M13 2L3 14h8l-1 8L21 10h-8l1-8z" />
+  </svg>
+);
+
+export const HookIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" viewBox="0 0 24 24" fill="none" stroke="currentColor" strokeWidth="2">
+    <path d="M12 2v12a4 4 0 1 0 4-4" strokeLinecap="round" strokeLinejoin="round" />
+  </svg>
+);
