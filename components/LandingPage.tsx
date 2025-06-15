@@ -92,6 +92,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               <span className="text-fuchsia-500 font-semibold">Polarizing Hook Generator:</span>
               <span className="ml-1 text-gray-400">Crafts openings designed to split opinions and fuel comment wars.</span>
             </li>
+            <li>
+              <span className="text-fuchsia-500 font-semibold">Shockwave Scheduler:</span>
+              <span className="ml-1 text-gray-400">Times releases for peak impact across global viewer zones.</span>
+            </li>
+            <li>
+              <span className="text-fuchsia-500 font-semibold">Deep Trend Miner:</span>
+              <span className="ml-1 text-gray-400">Unearths hidden subcultures so you can target emerging niches first.</span>
+            </li>
           </ul>
         </section>
       </main>
