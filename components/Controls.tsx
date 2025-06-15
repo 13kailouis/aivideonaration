@@ -49,8 +49,8 @@ const Controls: React.FC<ControlsProps> = ({
               type="button"
               onClick={() => onAspectRatioChange(ratio)}
               disabled={isGenerating}
-              className={`flex-1 p-3 rounded-md text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-teal-500
-                ${aspectRatio === ratio ? 'bg-teal-600 text-white shadow-md' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}
+              className={`flex-1 p-3 rounded-md text-sm font-medium transition-all duration-150 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-fuchsia-500
+                ${aspectRatio === ratio ? 'bg-fuchsia-600 text-white shadow-md' : 'bg-gray-700 text-gray-300 hover:bg-gray-600'}
                 ${isGenerating ? 'opacity-50 cursor-not-allowed' : ''}`}
               aria-pressed={aspectRatio === ratio}
             >
@@ -71,7 +71,7 @@ const Controls: React.FC<ControlsProps> = ({
             checked={useAiImages}
             onChange={(e) => onUseAiImagesChange(e.target.checked)}
             disabled={isGenerating || apiKeyMissing}
-            className="h-4 w-4 text-teal-600 border-gray-600 rounded focus:ring-teal-500 bg-gray-700 mr-2 disabled:opacity-50"
+            className="h-4 w-4 text-fuchsia-600 border-gray-600 rounded focus:ring-fuchsia-500 bg-gray-700 mr-2 disabled:opacity-50"
           />
           Use AI-Generated Images <span className="text-xs text-gray-400 ml-1">(Slower, uses more quota)</span>
         </label>
@@ -85,7 +85,7 @@ const Controls: React.FC<ControlsProps> = ({
             checked={includeSubtitlesOnDownload}
             onChange={(e) => onIncludeSubtitlesChange(e.target.checked)}
             disabled={isGenerating}
-            className="h-4 w-4 text-teal-600 border-gray-600 rounded focus:ring-teal-500 bg-gray-700 mr-2 disabled:opacity-50"
+            className="h-4 w-4 text-fuchsia-600 border-gray-600 rounded focus:ring-fuchsia-500 bg-gray-700 mr-2 disabled:opacity-50"
           />
           Include subtitles in download
         </label>
@@ -99,7 +99,7 @@ const Controls: React.FC<ControlsProps> = ({
               checked={isTTSEnabled}
               onChange={(e) => onTTSEnabledChange(e.target.checked)}
               disabled={isGenerating}
-              className="h-4 w-4 text-teal-600 border-gray-600 rounded focus:ring-teal-500 bg-gray-700 mr-2 disabled:opacity-50"
+              className="h-4 w-4 text-fuchsia-600 border-gray-600 rounded focus:ring-fuchsia-500 bg-gray-700 mr-2 disabled:opacity-50"
             />
             Enable TTS Narration (Preview)
           </label>
@@ -110,7 +110,7 @@ const Controls: React.FC<ControlsProps> = ({
         onClick={onGenerate}
         disabled={!canGenerate}
         className={`w-full flex items-center justify-center px-6 py-3 border border-transparent text-base font-medium rounded-md shadow-sm text-white
-                  ${!canGenerate ? 'bg-gray-600 cursor-not-allowed' : 'bg-teal-600 hover:bg-teal-700 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-teal-500'}
+                  ${!canGenerate ? 'bg-gray-600 cursor-not-allowed' : 'bg-fuchsia-600 hover:bg-fuchsia-500 focus:outline-none focus:ring-2 focus:ring-offset-2 focus:ring-offset-gray-800 focus:ring-fuchsia-500'}
                   transition-colors duration-150`}
         aria-live="polite"
         title={apiKeyMissing ? "API Key is missing. Cannot generate." : (narrationText.trim() === '' ? "Please enter narration text." : (hasScenes ? "Re-analyze narration & generate new scenes" : "Generate Video"))}

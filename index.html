@@ -27,6 +27,40 @@
       ::-webkit-scrollbar-thumb:hover {
         background: #777;
       }
+
+      /* Simple glitch effect for headings */
+      .glitch {
+        position: relative;
+      }
+      .glitch::before,
+      .glitch::after {
+        content: attr(data-text);
+        position: absolute;
+        left: 0;
+        top: 0;
+        overflow: hidden;
+        clip: rect(0, 900px, 0, 0);
+      }
+      .glitch::before {
+        left: 2px;
+        text-shadow: -2px 0 magenta;
+        animation: glitchTop 2s infinite linear alternate-reverse;
+      }
+      .glitch::after {
+        left: -2px;
+        text-shadow: -2px 0 purple;
+        animation: glitchBottom 1.5s infinite linear alternate-reverse;
+      }
+      @keyframes glitchTop {
+        0% { clip: rect(0, 900px, 0, 0); }
+        50% { clip: rect(0, 900px, 100%, 0); }
+        100% { clip: rect(0, 900px, 0, 0); }
+      }
+      @keyframes glitchBottom {
+        0% { clip: rect(100%, 900px, 0, 0); }
+        50% { clip: rect(0, 900px, 0, 0); }
+        100% { clip: rect(100%, 900px, 0, 0); }
+      }
     </style>
   <script type="importmap">
 {
