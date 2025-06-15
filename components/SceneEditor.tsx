@@ -56,35 +56,35 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
 
 
   return (
-    <div className="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl">
+    <div className="bg-white p-4 sm:p-6 rounded-xl shadow-2xl">
       <h3 className="text-xl sm:text-2xl font-semibold mb-4 text-indigo-300">4. Edit Scenes</h3>
-      {scenes.length === 0 && <p className="text-gray-400">No scenes generated yet. Use Step 1 & 2.</p>}
+      {scenes.length === 0 && <p className="text-gray-500">No scenes generated yet. Use Step 1 & 2.</p>}
       <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
         {scenes.map((scene, index) => (
-          <div key={scene.id} className="bg-gray-700 p-4 rounded-lg shadow-md">
+          <div key={scene.id} className="bg-gray-100 p-4 rounded-lg shadow-md">
             <h4 className="font-semibold text-indigo-400 mb-2">Scene {index + 1}</h4>
             {editableSceneId === scene.id ? (
               <div className="space-y-3">
                 <div>
-                  <label htmlFor={`sceneText-${scene.id}`} className="block text-sm font-medium text-gray-300 mb-1">Scene Text</label>
+                  <label htmlFor={`sceneText-${scene.id}`} className="block text-sm font-medium text-gray-700 mb-1">Scene Text</label>
                   <textarea
                     id={`sceneText-${scene.id}`}
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     rows={3}
-                    className="w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-gray-200 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full p-2 bg-white border border-gray-300 rounded-md text-gray-800 focus:ring-indigo-500 focus:border-indigo-500"
                     disabled={isGenerating}
                   />
                 </div>
                 <div>
-                  <label htmlFor={`sceneDuration-${scene.id}`} className="block text-sm font-medium text-gray-300 mb-1">Duration (seconds)</label>
+                  <label htmlFor={`sceneDuration-${scene.id}`} className="block text-sm font-medium text-gray-700 mb-1">Duration (seconds)</label>
                   <input
                     id={`sceneDuration-${scene.id}`}
                     type="number"
                     value={editDuration}
                     onChange={(e) => setEditDuration(Math.max(1, parseInt(e.target.value, 10) || 1))}
                     min="1"
-                    className="w-full p-2 bg-gray-800 border border-gray-600 rounded-md text-gray-200 focus:ring-indigo-500 focus:border-indigo-500"
+                    className="w-full p-2 bg-white border border-gray-300 rounded-md text-gray-800 focus:ring-indigo-500 focus:border-indigo-500"
                     disabled={isGenerating}
                   />
                 </div>
@@ -99,7 +99,7 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
                   <button
                     onClick={() => setEditableSceneId(null)}
                     disabled={isGenerating}
-                    className="px-3 py-1.5 text-sm bg-gray-600 hover:bg-gray-500 rounded-md text-white disabled:opacity-50"
+                    className="px-3 py-1.5 text-sm bg-gray-300 hover:bg-gray-200 rounded-md text-gray-700 disabled:opacity-50"
                   >
                     Cancel
                   </button>
@@ -107,12 +107,12 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
               </div>
             ) : (
               <div className="space-y-2">
-                <p className="text-gray-300 text-sm whitespace-pre-wrap break-words">
-                  <strong className="text-gray-400">Text:</strong> {scene.sceneText.length > 100 ? scene.sceneText.substring(0,97) + "..." : scene.sceneText}
+                <p className="text-gray-700 text-sm whitespace-pre-wrap break-words">
+                  <strong className="text-gray-500">Text:</strong> {scene.sceneText.length > 100 ? scene.sceneText.substring(0,97) + "..." : scene.sceneText}
                 </p>
-                <p className="text-gray-300 text-sm"><strong className="text-gray-400">Duration:</strong> {scene.duration}s</p>
-                <p className="text-gray-300 text-sm truncate">
-                    <strong className="text-gray-400">Image:</strong> {
+                <p className="text-gray-700 text-sm"><strong className="text-gray-500">Duration:</strong> {scene.duration}s</p>
+                <p className="text-gray-700 text-sm truncate">
+                    <strong className="text-gray-500">Image:</strong> {
                         scene.footageUrl.startsWith('data:image') ? 
                         (useAiImagesGlobal ? 'AI Generated' : 'Custom Image Data') : 
                         'Placeholder'
