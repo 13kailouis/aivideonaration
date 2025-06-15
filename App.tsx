@@ -325,7 +325,7 @@ const App: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-gray-900 text-gray-100 flex flex-col items-center p-4 sm:p-6 lg:p-8">
+    <div className="min-h-screen bg-gray-50 text-gray-900 flex flex-col items-center p-4 sm:p-6 lg:p-8">
       <header className="mb-6 sm:mb-8 text-center">
         <div className="flex items-center justify-center space-x-3">
            <SparklesIcon className="w-8 h-8 sm:w-10 sm:h-10 text-indigo-400" />
@@ -346,7 +346,7 @@ const App: React.FC = () => {
 
       <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         <div className="lg:col-span-1 space-y-6">
-          <div className="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl">
+          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-2xl">
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-indigo-300">1. Enter Your Narration</h2>
             <TextInputArea
               value={narrationText}
@@ -355,7 +355,7 @@ const App: React.FC = () => {
               disabled={isGeneratingScenes || apiKeyMissing || isRenderingVideo}
             />
           </div>
-          <div className="bg-gray-800 p-4 sm:p-6 rounded-xl shadow-2xl">
+          <div className="bg-white p-4 sm:p-6 rounded-xl shadow-2xl">
              <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-indigo-300">2. Configure & Generate</h2>
             <Controls
               aspectRatio={aspectRatio}
@@ -381,7 +381,7 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="lg:col-span-2 bg-gray-800 p-1 sm:p-2 rounded-xl shadow-2xl">
+        <div className="lg:col-span-2 bg-white p-1 sm:p-2 rounded-xl shadow-2xl">
            <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4 text-indigo-300 px-3 py-2">3. Preview Your Video</h2>
           <VideoPreview
             scenes={scenes}

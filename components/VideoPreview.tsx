@@ -270,7 +270,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
 
   if (scenes.length === 0 && !isGenerating) {
     return (
-      <div className={`w-full bg-gray-800 rounded-lg shadow-lg flex items-center justify-center text-gray-500 ${aspectRatio === '16:9' ? 'aspect-video' : 'aspect-[9/16]'}`}>
+      <div className={`w-full bg-white rounded-lg shadow-lg flex items-center justify-center text-gray-500 ${aspectRatio === '16:9' ? 'aspect-video' : 'aspect-[9/16]'}`}>
         Enter narration and click "Generate Video" to see preview.
       </div>
     );
@@ -278,7 +278,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
 
   if (isGenerating && scenes.length === 0) {
      return (
-      <div className={`w-full bg-gray-800 rounded-lg shadow-lg flex flex-col items-center justify-center text-gray-400 ${aspectRatio === '16:9' ? 'aspect-video' : 'aspect-[9/16]'}`}>
+      <div className={`w-full bg-white rounded-lg shadow-lg flex flex-col items-center justify-center text-gray-600 ${aspectRatio === '16:9' ? 'aspect-video' : 'aspect-[9/16]'}`}>
         <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-indigo-500 mb-4"></div>
         <p>Generating scenes & visuals...</p>
       </div>
@@ -289,7 +289,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
   const playedDuration = scenes.slice(0, currentSceneIndex).reduce((sum, s) => sum + s.duration, 0) + (elapsedTime / 1000);
 
   return (
-    <div className="bg-gray-800 p-1 sm:p-2 rounded-lg shadow-xl">
+    <div className="bg-white p-1 sm:p-2 rounded-lg shadow-xl">
       <div className={`relative w-full ${footageAspectRatioClass} bg-black overflow-hidden rounded-md`}>
         {imageSlots.map((slot, index) => (
           slot.scene ? (
@@ -307,7 +307,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
         )}
       </div>
       {scenes.length > 0 && (
-        <div className="mt-2 h-2 bg-gray-700 rounded-full overflow-hidden">
+        <div className="mt-2 h-2 bg-gray-200 rounded-full overflow-hidden">
           <div className="h-full bg-green-500" style={{ width: `${totalDuration > 0 ? (playedDuration / totalDuration) * 100 : 0}%`, transition: playedDuration > 0 ? 'width 0.1s linear' : 'none' }}></div>
         </div>
       )}
@@ -316,7 +316,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
           <button
             onClick={handlePlayPause}
             disabled={scenes.length === 0 || isGenerating || isDownloading}
-            className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 disabled:opacity-50 transition-colors text-indigo-400 hover:text-indigo-300"
+            className="p-2 rounded-full bg-gray-200 hover:bg-gray-100 disabled:opacity-50 transition-colors text-indigo-400 hover:text-indigo-300"
             aria-label={isPlaying ? "Pause" : "Play"}
           >
             {isPlaying ? <PauseIcon className="w-5 h-5 sm:w-6 sm:h-6" /> : <PlayIcon className="w-5 h-5 sm:w-6 sm:h-6" />}
@@ -324,13 +324,13 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
            <button
             onClick={handleRestart}
             disabled={scenes.length === 0 || isGenerating || isDownloading}
-            className="p-2 rounded-full bg-gray-700 hover:bg-gray-600 disabled:opacity-50 transition-colors text-sm text-indigo-400 hover:text-indigo-300"
+            className="p-2 rounded-full bg-gray-200 hover:bg-gray-100 disabled:opacity-50 transition-colors text-sm text-indigo-400 hover:text-indigo-300"
             aria-label="Restart"
           >
             Restart
           </button>
         </div>
-        <div className="text-xs sm:text-sm text-gray-400 truncate">
+        <div className="text-xs sm:text-sm text-gray-600 truncate">
           {currentScene ? `Scene ${currentSceneIndex + 1}/${scenes.length}` : (scenes.length > 0 ? `Ready` : `No video`)}
           {currentScene && isPlaying && ` (${Math.ceil(elapsedTime/1000)}s / ${currentScene.duration}s)`}
           {currentScene && ttsPlaybackStatus === 'playing' && isTTSEnabled && <span className="ml-1 animate-pulse">(🔊)</span>}
