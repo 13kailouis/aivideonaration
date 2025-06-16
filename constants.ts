@@ -19,3 +19,5 @@ export const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
 // Optional URL where the main app is hosted. If set, the landing page
 // will redirect here when users click "Get Started".
 export const LAUNCH_URL = process.env.LAUNCH_URL;
+// Flag for enabling premium-only features like AI imagery and TTS
+export const PREMIUM_ACCESS = process.env.PREMIUM_ACCESS === 'true';

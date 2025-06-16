@@ -10,13 +10,12 @@ interface ControlsProps {
   isGenerating: boolean;
   hasScenes: boolean;
   narrationText: string; // Added to disable button if no text
-  includeSubtitlesOnDownload: boolean;
-  onIncludeSubtitlesChange: (include: boolean) => void;
   isTTSEnabled: boolean;
   onTTSEnabledChange: (enabled: boolean) => void;
   ttsSupported: boolean;
   useAiImages: boolean;
   onUseAiImagesChange: (use: boolean) => void;
+  isPremium: boolean;
   apiKeyMissing: boolean; // Added to disable generate button
 }
 
@@ -27,13 +26,12 @@ const Controls: React.FC<ControlsProps> = ({
   isGenerating,
   hasScenes,
   narrationText,
-  includeSubtitlesOnDownload,
-  onIncludeSubtitlesChange,
   isTTSEnabled,
   onTTSEnabledChange,
   ttsSupported,
   useAiImages,
   onUseAiImagesChange,
+  isPremium,
   apiKeyMissing,
 }) => {
   const canGenerate = !isGenerating && narrationText.trim() !== '' && !apiKeyMissing;
@@ -63,34 +61,25 @@ const Controls: React.FC<ControlsProps> = ({
         </div>
       </div>
 
-      <div>
-        <label htmlFor="useAiImages" className="flex items-center text-sm font-medium text-gray-300 mb-1 cursor-pointer select-none">
-          <input
-            id="useAiImages"
-            type="checkbox"
-            checked={useAiImages}
-            onChange={(e) => onUseAiImagesChange(e.target.checked)}
-            disabled={isGenerating || apiKeyMissing}
-            className="h-4 w-4 text-white border-neutral-600 rounded focus:ring-white bg-neutral-800 mr-2 disabled:opacity-50"
-          />
-          Use AI-Generated Images <span className="text-xs text-gray-400 ml-1">(Slower, uses more quota)</span>
-        </label>
-      </div>
+      {isPremium ? (
+        <div>
+          <label htmlFor="useAiImages" className="flex items-center text-sm font-medium text-gray-300 mb-1 cursor-pointer select-none">
+            <input
+              id="useAiImages"
+              type="checkbox"
+              checked={useAiImages}
+              onChange={(e) => onUseAiImagesChange(e.target.checked)}
+              disabled={isGenerating || apiKeyMissing}
+              className="h-4 w-4 text-white border-neutral-600 rounded focus:ring-white bg-neutral-800 mr-2 disabled:opacity-50"
+            />
+            Use AI-Generated Images <span className="text-xs text-gray-400 ml-1">(Slower, uses more quota)</span>
+          </label>
+        </div>
+      ) : (
+        <p className="text-sm text-gray-500">AI-Generated Images are a premium feature.</p>
+      )}
 
-      <div>
-        <label htmlFor="includeSubtitles" className="flex items-center text-sm font-medium text-gray-300 mb-1 cursor-pointer select-none">
-          <input
-            id="includeSubtitles"
-            type="checkbox"
-            checked={includeSubtitlesOnDownload}
-            onChange={(e) => onIncludeSubtitlesChange(e.target.checked)}
-            disabled={isGenerating}
-            className="h-4 w-4 text-white border-neutral-600 rounded focus:ring-white bg-neutral-800 mr-2 disabled:opacity-50"
-          />
-          Include subtitles in download
-        </label>
-      </div>
-       {ttsSupported && (
+      {isPremium && ttsSupported && (
         <div>
           <label htmlFor="enableTTS" className="flex items-center text-sm font-medium text-gray-300 cursor-pointer select-none">
             <input
@@ -104,7 +93,7 @@ const Controls: React.FC<ControlsProps> = ({
             Enable TTS Narration (Preview)
           </label>
         </div>
-       )}
+      )}
 
       <button
         onClick={onGenerate}
@@ -118,9 +107,9 @@ const Controls: React.FC<ControlsProps> = ({
         <SparklesIcon className={`w-5 h-5 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
         {isGenerating ? 'Generating Video...' : (hasScenes ? 'Re-Generate Video from Narration' : 'Generate Video')}
       </button>
-       {!ttsSupported && (
-         <p className="text-xs text-gray-500 text-center mt-2">TTS narration not supported by your browser.</p>
-       )}
+      {isPremium && !ttsSupported && (
+        <p className="text-xs text-gray-500 text-center mt-2">TTS narration not supported by your browser.</p>
+      )}
        {apiKeyMissing && (
          <p className="text-xs text-red-400 text-center mt-2">AI features disabled: API Key missing.</p>
        )}
