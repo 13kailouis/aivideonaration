@@ -29,7 +29,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           </button>
         </nav>
         {menuOpen && (
-          <div className="sm:hidden fixed inset-0 bg-black/90 backdrop-blur flex flex-col items-center justify-center space-y-6 z-20">
+          <div className="sm:hidden fixed inset-0 bg-black/90 backdrop-blur flex flex-col items-center justify-center space-y-6 text-center z-20">
             <a href="#features" className="text-2xl" onClick={() => setMenuOpen(false)}>Features</a>
             <button
               className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-6 py-3 rounded-md text-lg shadow-lg"
@@ -43,7 +43,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           </div>
         )}
       </header>
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-4">
+      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 mt-16 sm:mt-24">
         <h2 className="text-4xl sm:text-6xl font-extrabold mb-6">
           Your Marketing Video Sidekick
         </h2>
@@ -59,18 +59,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           Get Started
         </button>
 
-        <div id="features" className="grid gap-6 sm:grid-cols-3 max-w-4xl mt-12 mb-8 text-left">
-          <div className="p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg">
+        <div id="features" className="flex gap-6 overflow-x-auto snap-x snap-mandatory mt-12 mb-8 text-left sm:grid sm:grid-cols-3 sm:max-w-4xl">
+          <div className="min-w-[80%] sm:min-w-0 p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg snap-center">
             <TrendingUpIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
-            <h3 className="font-semibold text-white">Trend Analysis</h3>
-            <p className="text-gray-400 text-sm mt-1">AI taps into viewer behavior so your content always hits the mark.</p>
+            <h3 className="font-semibold text-white">Audience Manipulation</h3>
+            <p className="text-gray-400 text-sm mt-1">We spy on every click to craft messages your viewers can’t resist.</p>
           </div>
-          <div className="p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg">
+          <div className="min-w-[80%] sm:min-w-0 p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg snap-center">
             <ScissorsIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
             <h3 className="font-semibold text-white">No Editing Required</h3>
             <p className="text-gray-400 text-sm mt-1">Just talk. We handle visuals, timing and audio sync automatically.</p>
           </div>
-          <div className="p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg">
+          <div className="min-w-[80%] sm:min-w-0 p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg snap-center">
             <FireIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
             <h3 className="font-semibold text-white">Controversy Ready</h3>
             <p className="text-gray-400 text-sm mt-1">Create bold videos that spark engagement without the headaches.</p>
