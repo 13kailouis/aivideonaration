@@ -11,16 +11,26 @@ interface WavConversionOptions {
 function parseMimeType(mimeType: string): WavConversionOptions {
   const [fileType, ...params] = mimeType.split(';').map((s) => s.trim());
   const [, format] = fileType.split('/');
-  const options: Partial<WavConversionOptions> = { numChannels: 1 };
+  const options: WavConversionOptions = {
+    numChannels: 1,
+    sampleRate: 44100,
+    bitsPerSample: 16,
+  };
+
   if (format && format.startsWith('L')) {
     const bits = parseInt(format.slice(1), 10);
     if (!isNaN(bits)) options.bitsPerSample = bits;
   }
+
   for (const param of params) {
     const [key, value] = param.split('=').map((s) => s.trim());
-    if (key === 'rate') options.sampleRate = parseInt(value, 10);
+    if (key === 'rate') {
+      const rate = parseInt(value, 10);
+      if (!isNaN(rate)) options.sampleRate = rate;
+    }
   }
-  return options as WavConversionOptions;
+
+  return options;
 }
 
 function createWavHeader(dataLength: number, opts: WavConversionOptions) {
@@ -46,8 +56,8 @@ function createWavHeader(dataLength: number, opts: WavConversionOptions) {
 
 function convertToWav(rawData: string, mimeType: string) {
   const opts = parseMimeType(mimeType);
-  const header = createWavHeader(rawData.length, opts);
   const data = Buffer.from(rawData, 'base64');
+  const header = createWavHeader(data.length, opts);
   return Buffer.concat([header, data]);
 }
 
