@@ -55,14 +55,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         <h2 className="text-4xl sm:text-6xl font-extrabold mb-6 bg-gradient-to-br from-fuchsia-400 to-cyan-400 bg-clip-text text-transparent leading-tight min-h-[5rem] sm:min-h-[6rem]">
           <TypewriterText
             phrases={[
-              'Your Marketing Video Sidekick',
-              'Turn Scripts into Shareable Videos',
-              'AI Video Creation in Minutes',
+              'The Viral Attention Machine',
+              'Unleash Controversy on Command',
+              'Weaponize Your Words',
             ]}
           />
         </h2>
         <p className="text-lg sm:text-2xl text-gray-300 max-w-3xl mb-8">
-          Stop wasting hours editing. CineSynth turns your script into shareable videos in minutes&mdash;perfect for busy YouTubers and marketing strategists.
+          Trash the tedious edits. CineSynth weaponizes your script into viral ammo in minutes&mdash;perfect for creators who crave unstoppable engagement.
         </p>
 
         <button
@@ -80,7 +80,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <TrendingUpIcon className="relative z-10 w-8 h-8 text-white mb-3" />
               <h3 className="relative z-10 font-semibold text-white group-hover:text-fuchsia-200 transition-colors duration-500">Trend Analysis</h3>
-              <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">AI exposes your audience's deepest impulses so your content always hits the mark.</p>
+              <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">AI exploits your audience's hidden desires so your message lands like an obsession.</p>
             </div>
           </FadeInSection>
           <FadeInSection>
@@ -89,7 +89,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <ScissorsIcon className="relative z-10 w-8 h-8 text-white mb-3" />
               <h3 className="relative z-10 font-semibold text-white group-hover:text-fuchsia-200 transition-colors duration-500">No Editing Required</h3>
-              <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">Just talk. We handle visuals, timing and audio sync automatically.</p>
+              <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">Just speak. We forge visuals and audio into one seamless shockwave.</p>
             </div>
           </FadeInSection>
           <FadeInSection>
@@ -98,7 +98,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <FireIcon className="relative z-10 w-8 h-8 text-white mb-3" />
               <h3 className="relative z-10 font-semibold text-white group-hover:text-fuchsia-200 transition-colors duration-500">Controversy Ready</h3>
-              <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">Create bold videos that spark engagement without the headaches.</p>
+              <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">Crank up the drama and ignite outrage&mdash;no editing nightmares.</p>
             </div>
           </FadeInSection>
         </div>
@@ -106,22 +106,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         <section className="w-full py-12 border-t border-gray-800 mt-8">
           <div className="max-w-5xl mx-auto grid md:grid-cols-2 gap-8 items-center p-8 md:p-12">
             <div className="space-y-4">
-              <h3 className="text-3xl font-bold">AI-Powered Content Creation</h3>
+              <h3 className="text-3xl font-bold">AI-Fueled Content Domination</h3>
               <p className="text-gray-300">
-                Amplify your message with smart analysis, automatic editing and seamless voice sync.
+                Amplify your message with ruthless analysis, hands-free editing and flawless voice sync.
               </p>
               <ul className="space-y-3 text-left text-gray-300">
                 <li className="flex items-start gap-2">
                   <SparklesIcon className="w-5 h-5 text-fuchsia-400" />
-                  <span>Smart Analysis with AI behavior tracking</span>
+                  <span>Behavior mining that taps hidden desires</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <ScissorsIcon className="w-5 h-5 text-fuchsia-400" />
-                  <span>Auto Editing keeps everything in sync</span>
+                  <span>Relentless auto edits keep your message razor sharp</span>
                 </li>
                 <li className="flex items-start gap-2">
                   <FireIcon className="w-5 h-5 text-fuchsia-400" />
-                  <span>Engagement Boost that resonates</span>
+                  <span>Psychological hooks that magnetize engagement</span>
                 </li>
               </ul>
             </div>
@@ -167,7 +167,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         </section>
       </main>
       <footer className="p-4 text-center text-gray-500 text-sm">
-        <p>&copy; {new Date().getFullYear()} CineSynth. AI that disrupts filmmaking.</p>
+        <p>&copy; {new Date().getFullYear()} CineSynth. AI that shatters the status quo.</p>
       </footer>
     </div>
   );
