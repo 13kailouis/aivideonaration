@@ -85,17 +85,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
         <section className="w-full py-12 border-t border-gray-800">
           <h3 className="text-3xl font-bold mb-8 text-center">Latest Insights</h3>
-          <div className="grid gap-6 sm:grid-cols-3 max-w-5xl mx-auto">
-            <article className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl">
-              <h4 className="text-xl font-semibold mb-2 text-white">AI Trends in 2024</h4>
+          <div className="relative max-w-5xl mx-auto pl-6 sm:pl-10 before:absolute before:top-0 before:bottom-0 before:left-3 sm:before:left-5 before:w-px before:bg-gradient-to-b before:from-fuchsia-500 before:to-emerald-500">
+            <article className="relative mb-10 pl-4 sm:pl-6 before:absolute before:left-0 before:top-2 before:w-3 before:h-3 before:rounded-full before:bg-fuchsia-500">
+              <h4 className="text-xl font-semibold mb-1 text-white">AI Trends in 2024</h4>
               <p className="text-gray-400 text-sm">Discover how generative video is reshaping marketing campaigns worldwide.</p>
             </article>
-            <article className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl">
-              <h4 className="text-xl font-semibold mb-2 text-white">Short-Form Secrets</h4>
+            <article className="relative mb-10 pl-4 sm:pl-6 before:absolute before:left-0 before:top-2 before:w-3 before:h-3 before:rounded-full before:bg-fuchsia-500">
+              <h4 className="text-xl font-semibold mb-1 text-white">Short-Form Secrets</h4>
               <p className="text-gray-400 text-sm">Tips to hook viewers in seconds across all social platforms.</p>
             </article>
-            <article className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl">
-              <h4 className="text-xl font-semibold mb-2 text-white">Storytelling Hacks</h4>
+            <article className="relative pl-4 sm:pl-6 before:absolute before:left-0 before:top-2 before:w-3 before:h-3 before:rounded-full before:bg-fuchsia-500">
+              <h4 className="text-xl font-semibold mb-1 text-white">Storytelling Hacks</h4>
               <p className="text-gray-400 text-sm">New strategies to craft compelling narratives without a film crew.</p>
             </article>
           </div>
