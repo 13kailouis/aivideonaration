@@ -137,7 +137,7 @@ const App: React.FC = () => {
       }, 2500);
 
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred during scene generation.';
+      const errorMessage = err instanceof Error ? err.message : String(err || 'Unknown error during scene generation.');
       console.error("Error generating scenes:", err);
       setError(errorMessage);
       setProgressMessage(`Error: ${errorMessage.substring(0,100)}...`); 
@@ -221,7 +221,7 @@ const App: React.FC = () => {
       }, 3000);
 
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred while rendering video.';
+      const errorMessage = err instanceof Error ? err.message : String(err || 'Unknown error while rendering video.');
       console.error("Error rendering video:", err);
       setError(errorMessage);
       if (!window.crossOriginIsolated) {
