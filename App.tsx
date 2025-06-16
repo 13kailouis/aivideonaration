@@ -12,6 +12,7 @@ import { analyzeNarrationWithGemini, generateImageWithImagen } from './services/
 import { processNarrationToScenes, fetchPlaceholderFootageUrl } from './services/videoService.ts';
 import { generateWebMFromScenes } from './services/videoRenderingService.ts';
 import { convertWebMToMP4 } from './services/mp4ConversionService.ts';
+import { synthesizeSpeech } from './services/ttsService.ts';
 import { SparklesIcon } from './components/IconComponents.tsx';
 
 const App: React.FC = () => {
@@ -30,7 +31,7 @@ const App: React.FC = () => {
 
   const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(true);
   const [ttsPlaybackStatus, setTTSPlaybackStatus] = useState<'idle' | 'playing' | 'paused' | 'ended'>('idle');
-  const currentSpeechRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const currentAudioRef = useRef<HTMLAudioElement | null>(null);
   const analysisCacheRef = useRef<GeminiSceneResponseItem[] | null>(null);
 
 
@@ -39,14 +40,11 @@ const App: React.FC = () => {
       setApiKeyMissing(true);
       setError("Critical: Gemini API Key is missing. Please set the API_KEY environment variable for AI features to work. The application will not function correctly without it.");
     }
-    if (typeof window.speechSynthesis === 'undefined') {
-      setIsTTSEnabled(false); 
-      console.warn("SpeechSynthesis API not supported in this browser. TTS feature disabled.");
-    }
-    
     return () => {
-      if (window.speechSynthesis && window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        URL.revokeObjectURL(currentAudioRef.current.src);
+        currentAudioRef.current = null;
       }
     };
   }, []);
@@ -229,24 +227,48 @@ const App: React.FC = () => {
     }
   };
   
-  // TTS Handlers (no change in logic, just ensuring they are present)
-  const handleTTSPlay = (text: string) => {
-    if (!isTTSEnabled || typeof window.speechSynthesis === 'undefined') return;
-    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) window.speechSynthesis.cancel();
-    currentSpeechRef.current = new SpeechSynthesisUtterance(text);
-    currentSpeechRef.current.onstart = () => setTTSPlaybackStatus('playing');
-    currentSpeechRef.current.onpause = () => setTTSPlaybackStatus('paused'); 
-    currentSpeechRef.current.onresume = () => setTTSPlaybackStatus('playing'); 
-    currentSpeechRef.current.onend = () => { setTTSPlaybackStatus('ended'); currentSpeechRef.current = null; };
-    currentSpeechRef.current.onerror = (event: SpeechSynthesisErrorEvent) => {
-        if (event.error !== 'interrupted') console.error('SpeechSynthesisUtterance Error:', event.error);
-        setTTSPlaybackStatus('idle'); currentSpeechRef.current = null;
-    };
-    window.speechSynthesis.speak(currentSpeechRef.current);
+  // TTS Handlers using Gemini TTS
+  const handleTTSPlay = async (text: string) => {
+    if (!isTTSEnabled) return;
+    try {
+      if (currentAudioRef.current) {
+        currentAudioRef.current.pause();
+        URL.revokeObjectURL(currentAudioRef.current.src);
+        currentAudioRef.current = null;
+      }
+      const blob = await synthesizeSpeech(text);
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      audio.onplay = () => setTTSPlaybackStatus('playing');
+      audio.onpause = () => { if (!audio.ended) setTTSPlaybackStatus('paused'); };
+      audio.onended = () => {
+        setTTSPlaybackStatus('ended');
+        URL.revokeObjectURL(url);
+        currentAudioRef.current = null;
+      };
+      audio.onerror = () => {
+        setTTSPlaybackStatus('idle');
+        URL.revokeObjectURL(url);
+        currentAudioRef.current = null;
+      };
+      currentAudioRef.current = audio;
+      await audio.play();
+    } catch (err) {
+      console.error('Error generating TTS:', err);
+      setTTSPlaybackStatus('idle');
+    }
   };
-  const handleTTSPause = () => { if (window.speechSynthesis?.speaking) window.speechSynthesis.pause(); };
-  const handleTTSResume = () => { if (window.speechSynthesis?.paused) window.speechSynthesis.resume(); };
-  const handleTTSStop = () => { if (window.speechSynthesis) window.speechSynthesis.cancel(); setTTSPlaybackStatus('idle'); currentSpeechRef.current = null; };
+  const handleTTSPause = () => { currentAudioRef.current?.pause(); };
+  const handleTTSResume = () => { if (currentAudioRef.current?.paused) currentAudioRef.current.play(); };
+  const handleTTSStop = () => {
+    if (currentAudioRef.current) {
+      currentAudioRef.current.pause();
+      currentAudioRef.current.currentTime = 0;
+      URL.revokeObjectURL(currentAudioRef.current.src);
+      currentAudioRef.current = null;
+    }
+    setTTSPlaybackStatus('idle');
+  };
   const toggleTTSEnabled = (enabled: boolean) => { setIsTTSEnabled(enabled); if (!enabled) handleTTSStop(); };
 
   // Scene Editor Handlers
@@ -377,7 +399,7 @@ const App: React.FC = () => {
               onIncludeSubtitlesChange={setIncludeSubtitlesOnDownload}
               isTTSEnabled={isTTSEnabled}
               onTTSEnabledChange={toggleTTSEnabled}
-              ttsSupported={typeof window.speechSynthesis !== 'undefined'}
+              ttsSupported={true}
               useAiImages={useAiImages}
               onUseAiImagesChange={setUseAiImages}
               apiKeyMissing={apiKeyMissing}
