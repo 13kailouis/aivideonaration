@@ -33,6 +33,20 @@ const App: React.FC = () => {
   const currentSpeechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const analysisCacheRef = useRef<GeminiSceneResponseItem[] | null>(null);
 
+  const showPreview = scenes.length > 0 || isGeneratingScenes || isRenderingVideo;
+  const [previewMounted, setPreviewMounted] = useState(showPreview);
+
+  useEffect(() => {
+    if (showPreview) {
+      setPreviewMounted(true);
+    } else {
+      const t = setTimeout(() => setPreviewMounted(false), 300);
+      return () => clearTimeout(t);
+    }
+  }, [showPreview]);
+
+  const gridColsClass = showPreview ? 'lg:grid-cols-2' : 'lg:grid-cols-1';
+
 
   useEffect(() => {
     if (!API_KEY) {
@@ -348,8 +362,9 @@ const App: React.FC = () => {
          </div>
       )}
 
-      <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
-        <div className="lg:col-span-1 space-y-6">
+      <div className="w-full max-w-5xl space-y-6">
+        <div className={`grid grid-cols-1 ${gridColsClass} gap-6 sm:gap-8 transition-all`}>
+        <div className="space-y-6">
           <div className="p-4 sm:p-6 bg-neutral-900/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-white" style={{ fontFamily: 'Fira Code' }}>1. Enter Your Narration</h2>
             <TextInputArea
@@ -385,13 +400,14 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="lg:col-span-2 p-1 sm:p-2 bg-neutral-900/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg">
+        {previewMounted && (
+        <div className={`p-1 sm:p-2 bg-neutral-900/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg transition-opacity duration-500 ${showPreview ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
            <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4 text-white px-3 py-2" style={{ fontFamily: 'Fira Code' }}>3. Preview Your Video</h2>
           <VideoPreview
             scenes={scenes}
             aspectRatio={aspectRatio}
             onDownloadRequest={handleDownloadVideo}
-            isGenerating={isGeneratingScenes} 
+            isGenerating={isGeneratingScenes}
             isDownloading={isRenderingVideo}
             isTTSEnabled={isTTSEnabled}
             onTTSPlay={handleTTSPlay}
@@ -401,6 +417,7 @@ const App: React.FC = () => {
             ttsPlaybackStatus={ttsPlaybackStatus}
           />
         </div>
+        )}
       </div>
       
       {scenes.length > 0 && !isGeneratingScenes && !isRenderingVideo && (
@@ -443,6 +460,7 @@ const App: React.FC = () => {
         </div>
       )}
 
+      </div>
 
       <footer className="mt-8 sm:mt-12 text-center text-gray-500 text-sm">
         <p>&copy; {new Date().getFullYear()} {APP_TITLE}. AI-powered video creation.</p>
