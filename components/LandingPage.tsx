@@ -1,5 +1,7 @@
-import React, { useState } from 'react';
+import React, { useState, useEffect, useRef } from 'react';
 import { SparklesIcon, MenuIcon, CloseIcon, TrendingUpIcon, ScissorsIcon, FireIcon, QuoteIcon } from './IconComponents.tsx';
+import TypewriterText from './TypewriterText.tsx';
+import FadeInSection from './FadeInSection.tsx';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -7,11 +9,28 @@ interface LandingPageProps {
 
 const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
   const [menuOpen, setMenuOpen] = useState(false);
+  const [showStickyCTA, setShowStickyCTA] = useState(false);
+  const heroRef = useRef<HTMLDivElement | null>(null);
+
+  useEffect(() => {
+    const handleScroll = () => {
+      if (!heroRef.current) return;
+      setShowStickyCTA(window.scrollY > heroRef.current.clientHeight);
+    };
+    window.addEventListener('scroll', handleScroll);
+    return () => window.removeEventListener('scroll', handleScroll);
+  }, []);
   return (
     <div className="min-h-screen flex flex-col bg-black text-white">
       <header className="bg-black/70 backdrop-blur sticky top-0 z-10">
         <nav className="max-w-6xl mx-auto flex justify-between items-center p-4">
-          <h1 className="text-3xl font-bold text-white" style={{fontFamily:'Fira Code'}}>CineSynth</h1>
+          <h1
+            className="glitch text-3xl font-bold text-white"
+            data-text="CineSynth"
+            style={{ fontFamily: 'Fira Code' }}
+          >
+            CineSynth
+          </h1>
           <div className="hidden sm:flex items-center gap-6">
             <a href="#features" className="hover:text-gray-300 transition-colors">Features</a>
             <button
@@ -29,7 +48,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           </button>
         </nav>
         {menuOpen && (
-          <div className="sm:hidden fixed inset-0 bg-black/90 backdrop-blur flex flex-col items-center justify-center space-y-6 z-50 min-h-screen">
+          <div className="sm:hidden fixed inset-0 bg-black/90 backdrop-blur flex flex-col items-center justify-center space-y-6 z-50 min-h-screen slide-in-right">
             <a href="#features" className="text-2xl" onClick={() => setMenuOpen(false)}>Features</a>
             <button
               className="bg-white text-black px-6 py-3 rounded-md text-lg shadow-lg hover:bg-gray-200"
@@ -43,44 +62,61 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           </div>
         )}
       </header>
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-24">
-        <h2 className="text-4xl sm:text-6xl font-extrabold mb-6">
-          Your Marketing Video Sidekick
-        </h2>
-        <p className="text-lg sm:text-2xl text-gray-300 max-w-3xl mb-8">
-          Stop wasting hours editing. CineSynth turns your script into shareable videos in minutes&mdash;perfect for busy YouTubers and marketing strategists.
-        </p>
+      <main className="flex-1 flex flex-col items-center text-center px-4 pt-24">
+        <section ref={heroRef} className="flex flex-col items-center justify-center mb-12">
+          <h2 className="text-4xl sm:text-6xl font-extrabold mb-6 bg-gradient-to-br from-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
+            <TypewriterText
+              phrases={[
+                'Your Marketing Video Sidekick',
+                'Turn Scripts into Shareable Videos',
+                'AI Video Creation in Minutes',
+              ]}
+            />
+          </h2>
+          <p className="text-lg sm:text-2xl text-gray-300 max-w-3xl mb-8">
+            Stop wasting hours editing. CineSynth turns your script into shareable videos in minutes&mdash;perfect for busy YouTubers and marketing strategists.
+          </p>
 
-        <button
-          onClick={onGetStarted}
-          className="bg-white text-black text-lg px-8 py-4 rounded-full shadow-xl flex items-center gap-2 hover:bg-gray-200"
+          <button
+            onClick={onGetStarted}
+            className="bg-white text-black text-lg px-8 py-4 rounded-full shadow-xl flex items-center gap-2 hover:bg-gray-200"
+          >
+            <SparklesIcon className="w-6 h-6" />
+            Get Started
+          </button>
+        </section>
+
+        <div
+          id="features"
+          className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 sm:grid sm:grid-cols-3 sm:gap-6 w-full max-w-4xl mt-12 mb-8 text-left px-2"
         >
-          <SparklesIcon className="w-6 h-6" />
-          Get Started
-        </button>
-
-        <div id="features" className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6 w-full max-w-4xl mt-12 mb-8 text-left px-2">
-          <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
-            <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
-            <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <TrendingUpIcon className="relative z-10 w-8 h-8 text-white mb-3" />
-            <h3 className="relative z-10 font-semibold text-white group-hover:text-fuchsia-200 transition-colors duration-500">Trend Analysis</h3>
-            <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">AI exposes your audience's deepest impulses so your content always hits the mark.</p>
-          </div>
-          <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
-            <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
-            <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <ScissorsIcon className="relative z-10 w-8 h-8 text-white mb-3" />
-            <h3 className="relative z-10 font-semibold text-white group-hover:text-fuchsia-200 transition-colors duration-500">No Editing Required</h3>
-            <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">Just talk. We handle visuals, timing and audio sync automatically.</p>
-          </div>
-          <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
-            <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
-            <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-            <FireIcon className="relative z-10 w-8 h-8 text-white mb-3" />
-            <h3 className="relative z-10 font-semibold text-white group-hover:text-fuchsia-200 transition-colors duration-500">Controversy Ready</h3>
-            <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">Create bold videos that spark engagement without the headaches.</p>
-          </div>
+          <FadeInSection>
+            <div className="relative min-w-[80%] sm:min-w-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
+              <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <TrendingUpIcon className="relative z-10 w-8 h-8 text-white mb-3" />
+              <h3 className="relative z-10 font-semibold text-white group-hover:text-fuchsia-200 transition-colors duration-500">Trend Analysis</h3>
+              <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">AI exposes your audience's deepest impulses so your content always hits the mark.</p>
+            </div>
+          </FadeInSection>
+          <FadeInSection>
+            <div className="relative min-w-[80%] sm:min-w-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
+              <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <ScissorsIcon className="relative z-10 w-8 h-8 text-white mb-3" />
+              <h3 className="relative z-10 font-semibold text-white group-hover:text-fuchsia-200 transition-colors duration-500">No Editing Required</h3>
+              <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">Just talk. We handle visuals, timing and audio sync automatically.</p>
+            </div>
+          </FadeInSection>
+          <FadeInSection>
+            <div className="relative min-w-[80%] sm:min-w-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
+              <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
+              <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
+              <FireIcon className="relative z-10 w-8 h-8 text-white mb-3" />
+              <h3 className="relative z-10 font-semibold text-white group-hover:text-fuchsia-200 transition-colors duration-500">Controversy Ready</h3>
+              <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">Create bold videos that spark engagement without the headaches.</p>
+            </div>
+          </FadeInSection>
         </div>
 
         <section className="w-full py-12 border-t border-gray-800 mt-8">
@@ -115,31 +151,46 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
         <section className="w-full py-12 border-t border-gray-800">
           <h3 className="text-3xl font-bold mb-8 text-center">What Our Users Say</h3>
-          <div className="grid gap-4 sm:grid-cols-3 sm:gap-6 max-w-5xl mx-auto text-left">
-            <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
+          <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 sm:grid sm:grid-cols-3 sm:gap-6 max-w-5xl mx-auto text-left">
+            <FadeInSection>
+            <div className="relative min-w-[80%] sm:min-w-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-cyan-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <QuoteIcon className="relative z-10 w-6 h-6 mb-2 text-white/80" />
               <p className="relative z-10 text-gray-300 group-hover:text-gray-200 italic text-sm mb-3">&quot;This tool supercharged our marketing videos. Nothing else compares!&quot;</p>
               <span className="relative z-10 text-white font-semibold group-hover:text-cyan-200">— Alex R.</span>
-            </div>
-            <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
+              </div>
+            </FadeInSection>
+            <FadeInSection>
+            <div className="relative min-w-[80%] sm:min-w-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-cyan-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <QuoteIcon className="relative z-10 w-6 h-6 mb-2 text-white/80" />
               <p className="relative z-10 text-gray-300 group-hover:text-gray-200 italic text-sm mb-3">&quot;CineSynth lets us pump out engaging content in minutes instead of hours.&quot;</p>
               <span className="relative z-10 text-white font-semibold group-hover:text-cyan-200">— Samira L.</span>
-            </div>
-            <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
+              </div>
+            </FadeInSection>
+            <FadeInSection>
+            <div className="relative min-w-[80%] sm:min-w-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-cyan-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <QuoteIcon className="relative z-10 w-6 h-6 mb-2 text-white/80" />
               <p className="relative z-10 text-gray-300 group-hover:text-gray-200 italic text-sm mb-3">&quot;The results blew our minds. It&#39;s like having a full editing team on call.&quot;</p>
               <span className="relative z-10 text-white font-semibold group-hover:text-cyan-200">— Jordan K.</span>
-            </div>
+              </div>
+            </FadeInSection>
           </div>
         </section>
       </main>
+      {showStickyCTA && (
+        <button
+          className="sm:hidden fixed bottom-4 left-1/2 -translate-x-1/2 bg-white text-black px-6 py-3 rounded-full shadow-lg flex items-center gap-2 animate-bounce"
+          onClick={onGetStarted}
+        >
+          <SparklesIcon className="w-5 h-5" />
+          Launch App
+        </button>
+      )}
       <footer className="p-4 text-center text-gray-500 text-sm">
         <p>&copy; {new Date().getFullYear()} CineSynth. AI that disrupts filmmaking.</p>
       </footer>

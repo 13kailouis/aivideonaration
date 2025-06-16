@@ -63,6 +63,25 @@
         50% { clip: rect(0, 900px, 0, 0); }
         100% { clip: rect(100%, 900px, 0, 0); }
       }
+
+      body.dynamic-bg {
+        background: linear-gradient(45deg, #000, #111, #000);
+        background-size: 400% 400%;
+        animation: bgShift 20s ease infinite;
+      }
+      @keyframes bgShift {
+        0% { background-position: 0% 50%; }
+        50% { background-position: 100% 50%; }
+        100% { background-position: 0% 50%; }
+      }
+
+      @keyframes slideInRight {
+        from { transform: translateX(100%); }
+        to { transform: translateX(0); }
+      }
+      .slide-in-right {
+        animation: slideInRight 0.3s forwards;
+      }
     </style>
   <script type="importmap">
 {
@@ -76,7 +95,7 @@
 </script>
   <!-- WebM Writer library removed -->
 </head>
-  <body class="bg-black text-white antialiased" style="font-family: 'Sora', sans-serif;">
+  <body class="bg-black text-white antialiased dynamic-bg" style="font-family: 'Sora', sans-serif;">
     <div id="root"></div>
     <script type="module" src="/index.tsx"></script>
   </body>
