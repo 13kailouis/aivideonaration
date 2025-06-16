@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SparklesIcon, MenuIcon, CloseIcon, TrendingUpIcon, ScissorsIcon, FireIcon, QuoteIcon } from './IconComponents.tsx';
+import TypewriterText from './TypewriterText.tsx';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -45,7 +46,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
       </header>
       <main className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-24">
         <h2 className="text-4xl sm:text-6xl font-extrabold mb-6">
-          Your Marketing Video Sidekick
+          <TypewriterText
+            phrases={[
+              'Your Marketing Video Sidekick',
+              'Turn Scripts into Shareable Videos',
+              'AI Video Creation in Minutes',
+            ]}
+          />
         </h2>
         <p className="text-lg sm:text-2xl text-gray-300 max-w-3xl mb-8">
           Stop wasting hours editing. CineSynth turns your script into shareable videos in minutes&mdash;perfect for busy YouTubers and marketing strategists.
