@@ -10,6 +10,7 @@ CineSynth transforms text scripts into marketing-ready videos in minutes. Powere
 - Automatic editing and subtitle generation
 - Optional AI‑generated imagery using Imagen
 - Browser-based WebM to MP4 conversion via ffmpeg.wasm
+- Responsive default aspect ratio adapts to device orientation
 
 ## Getting Started
 
