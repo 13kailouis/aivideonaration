@@ -59,22 +59,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           Get Started
         </button>
 
-        <div id="features" className="flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:gap-6 sm:overflow-visible max-w-4xl mt-12 mb-8 text-left snap-x sm:snap-none">
-          <div className="relative shrink-0 snap-start sm:snap-none p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group w-72 sm:w-auto">
+        <div id="features" className="grid gap-6 sm:grid-cols-3 max-w-4xl mt-12 mb-8 text-left">
+          <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group w-full">
             <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
             <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <TrendingUpIcon className="relative z-10 w-8 h-8 text-white mb-3" />
             <h3 className="relative z-10 font-semibold text-white group-hover:text-fuchsia-200 transition-colors duration-500">Trend Analysis</h3>
             <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">AI exposes your audience's deepest impulses so your content always hits the mark.</p>
           </div>
-          <div className="relative shrink-0 snap-start sm:snap-none p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group w-72 sm:w-auto">
+          <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group w-full">
             <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
             <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <ScissorsIcon className="relative z-10 w-8 h-8 text-white mb-3" />
             <h3 className="relative z-10 font-semibold text-white group-hover:text-fuchsia-200 transition-colors duration-500">No Editing Required</h3>
             <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">Just talk. We handle visuals, timing and audio sync automatically.</p>
           </div>
-          <div className="relative shrink-0 snap-start sm:snap-none p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group w-72 sm:w-auto">
+          <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group w-full">
             <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
             <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
             <FireIcon className="relative z-10 w-8 h-8 text-white mb-3" />
@@ -82,6 +82,24 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">Create bold videos that spark engagement without the headaches.</p>
           </div>
         </div>
+
+        <section className="w-full py-12 border-t border-gray-800">
+          <h3 className="text-3xl font-bold mb-8 text-center">Latest Insights</h3>
+          <div className="grid gap-6 sm:grid-cols-3 max-w-5xl mx-auto">
+            <article className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl">
+              <h4 className="text-xl font-semibold mb-2 text-white">AI Trends in 2024</h4>
+              <p className="text-gray-400 text-sm">Discover how generative video is reshaping marketing campaigns worldwide.</p>
+            </article>
+            <article className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl">
+              <h4 className="text-xl font-semibold mb-2 text-white">Short-Form Secrets</h4>
+              <p className="text-gray-400 text-sm">Tips to hook viewers in seconds across all social platforms.</p>
+            </article>
+            <article className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl">
+              <h4 className="text-xl font-semibold mb-2 text-white">Storytelling Hacks</h4>
+              <p className="text-gray-400 text-sm">New strategies to craft compelling narratives without a film crew.</p>
+            </article>
+          </div>
+        </section>
 
         <section className="w-full py-12 border-t border-gray-800 mt-8">
           <h3 className="text-3xl font-bold mb-8 text-center">Disruptive Extras</h3>
