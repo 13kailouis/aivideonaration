@@ -88,10 +88,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
         <div
           id="features"
-          className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 sm:grid sm:grid-cols-3 sm:gap-6 w-full max-w-4xl mt-12 mb-8 text-left px-2"
+          className="flex gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbar pb-4 sm:grid sm:grid-cols-3 sm:gap-6 w-full max-w-4xl mt-12 mb-8 text-left px-2"
         >
           <FadeInSection>
-            <div className="relative min-w-[80%] sm:min-w-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
+            <div className="relative min-w-[75%] sm:min-w-0 flex-shrink-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <TrendingUpIcon className="relative z-10 w-8 h-8 text-white mb-3" />
@@ -100,7 +100,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             </div>
           </FadeInSection>
           <FadeInSection>
-            <div className="relative min-w-[80%] sm:min-w-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
+            <div className="relative min-w-[75%] sm:min-w-0 flex-shrink-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <ScissorsIcon className="relative z-10 w-8 h-8 text-white mb-3" />
@@ -109,7 +109,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             </div>
           </FadeInSection>
           <FadeInSection>
-            <div className="relative min-w-[80%] sm:min-w-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
+            <div className="relative min-w-[75%] sm:min-w-0 flex-shrink-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <FireIcon className="relative z-10 w-8 h-8 text-white mb-3" />
@@ -151,9 +151,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
         <section className="w-full py-12 border-t border-gray-800">
           <h3 className="text-3xl font-bold mb-8 text-center">What Our Users Say</h3>
-          <div className="flex gap-4 overflow-x-auto snap-x snap-mandatory pb-4 sm:grid sm:grid-cols-3 sm:gap-6 max-w-5xl mx-auto text-left">
+          <div className="flex gap-6 overflow-x-auto snap-x snap-mandatory scroll-smooth hide-scrollbar pb-4 sm:grid sm:grid-cols-3 sm:gap-6 max-w-5xl mx-auto text-left">
             <FadeInSection>
-            <div className="relative min-w-[80%] sm:min-w-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
+            <div className="relative min-w-[75%] sm:min-w-0 flex-shrink-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-cyan-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <QuoteIcon className="relative z-10 w-6 h-6 mb-2 text-white/80" />
@@ -162,7 +162,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               </div>
             </FadeInSection>
             <FadeInSection>
-            <div className="relative min-w-[80%] sm:min-w-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
+            <div className="relative min-w-[75%] sm:min-w-0 flex-shrink-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-cyan-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <QuoteIcon className="relative z-10 w-6 h-6 mb-2 text-white/80" />
@@ -171,7 +171,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               </div>
             </FadeInSection>
             <FadeInSection>
-            <div className="relative min-w-[80%] sm:min-w-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
+            <div className="relative min-w-[75%] sm:min-w-0 flex-shrink-0 p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group transform transition-transform hover:scale-105 snap-center">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-cyan-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <QuoteIcon className="relative z-10 w-6 h-6 mb-2 text-white/80" />

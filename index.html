@@ -82,6 +82,15 @@
       .slide-in-right {
         animation: slideInRight 0.3s forwards;
       }
+
+      /* Hide mobile scrollbars for horizontal carousels */
+      .hide-scrollbar {
+        -ms-overflow-style: none;
+        scrollbar-width: none;
+      }
+      .hide-scrollbar::-webkit-scrollbar {
+        display: none;
+      }
     </style>
   <script type="importmap">
 {
