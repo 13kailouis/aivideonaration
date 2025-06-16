@@ -85,28 +85,17 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
         <section className="w-full py-12 border-t border-gray-800 mt-8">
           <h3 className="text-3xl font-bold mb-8 text-center">Disruptive Extras</h3>
-          <div className="relative max-w-5xl mx-auto p-8 md:p-12 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-2xl overflow-hidden">
+          <article className="relative max-w-4xl mx-auto p-8 md:p-12 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-2xl overflow-hidden text-left">
             <div className="absolute inset-0 bg-[linear-gradient(#4441_1px,transparent_1px),linear-gradient(90deg,#4441_1px,transparent_1px)] bg-[length:32px_32px] opacity-20 pointer-events-none" />
             <div className="absolute -inset-px rounded-2xl bg-gradient-to-br from-fuchsia-500/20 via-transparent to-transparent pointer-events-none" />
-            <p className="relative z-10 text-gray-300 mb-8">Harness cutting-edge algorithms that exploit the web's volatility. These extras escalate tension and lock in engagement.</p>
-            <div className="relative z-10 grid grid-cols-1 sm:grid-cols-3 gap-8 text-center">
-              <div>
-                <div className="text-2xl font-bold text-white">+250%</div>
-                <div className="text-fuchsia-400 text-sm uppercase tracking-wide mt-1">Comment Surge</div>
-                <p className="text-gray-400 text-sm mt-2">Outrage Engine ignites minor rifts into viral showdowns.</p>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-white">&lt;30s</div>
-                <div className="text-fuchsia-400 text-sm uppercase tracking-wide mt-1">Trending Speed</div>
-                <p className="text-gray-400 text-sm mt-2">Narrative Hijacker grabs hot topics before rivals react.</p>
-              </div>
-              <div>
-                <div className="text-2xl font-bold text-white">4x</div>
-                <div className="text-fuchsia-400 text-sm uppercase tracking-wide mt-1">Return Visits</div>
-                <p className="text-gray-400 text-sm mt-2">Addiction Loop Builder keeps viewers coming back for more.</p>
-              </div>
-            </div>
-          </div>
+            <h4 className="relative z-10 text-2xl font-semibold text-white mb-4">Trending Speed</h4>
+            <p className="relative z-10 text-gray-300 mb-4">
+              Narrative Hijacker grabs hot topics in under 30 seconds so your content launches before the trend cools down.
+            </p>
+            <p className="relative z-10 text-gray-300">
+              Hit publish while your competitors are still researching and keep viewers hooked on what's next.
+            </p>
+          </article>
         </section>
 
         <section className="w-full py-12 border-t border-gray-800">
