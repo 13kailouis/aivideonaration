@@ -1,51 +1,43 @@
 # CineSynth
 
-Run and deploy your AI Studio app
+**AI-Powered Video Narration Tool**
 
-This contains everything you need to run your app locally.
+CineSynth transforms text scripts into marketing-ready videos in minutes. Powered by Gemini and Imagen models, it handles scene analysis, placeholder footage, subtitles and final video rendering right in your browser.
 
-## Run Locally
+## Features
 
-**Prerequisites:**  Node.js
+- Smart narration analysis with Google Gemini
+- Automatic editing and subtitle generation
+- Optional AI‑generated imagery using Imagen
+- Browser-based WebM to MP4 conversion via ffmpeg.wasm
 
+## Getting Started
 
-1. Install dependencies:
-   `npm install`
-2. Set the `GEMINI_API_KEY` in [.env.local](.env.local) to your Gemini API key
-3. (Optional) Set the `PEXELS_API_KEY` in `.env.local` to enable higher-quality
-   placeholder images from Pexels. If this key is not provided, the app falls
-   back to using images from [loremflickr](https://loremflickr.com/), which
-   includes CORS headers to avoid browser errors.
-   Placeholder images are now requested at a smaller resolution (960x540 or
-   540x960) to speed up the preview and avoid long preload times. If an image
-   fails to load during rendering, the app substitutes a small fallback image so
-   video generation can continue rather than stalling.
-4. Run the app:
-   `npm run dev`
+1. Install dependencies
+   ```bash
+   npm install
+   ```
+2. Create a `.env.local` file and set `GEMINI_API_KEY`. Optionally add `PEXELS_API_KEY` for higher quality placeholder images.
+3. Start the development server
+   ```bash
+   npm run dev
+   ```
 
-Video downloads require the browser to be cross-origin isolated so that ffmpeg.wasm can use `SharedArrayBuffer`. The development server now automatically sends the necessary `Cross-Origin-Opener-Policy` and `Cross-Origin-Embedder-Policy` headers. Make sure you access the app via `npm run dev` (or `npm run preview` after building) rather than opening `index.html` directly.
-A local copy of `tailwind.js` is included to maintain cross-origin isolation. If you encounter the error "Browser is not cross-origin isolated" ensure you are running `npm run dev` and avoid loading external scripts without CORS headers.
+Development mode automatically provides the required cross-origin isolation headers so ffmpeg.wasm can use `SharedArrayBuffer`. Always run the app via `npm run dev` or `npm run preview` after building.
 
+### Faster MP4 Conversion
 
-The generated video will now download as an MP4 file.
+By default the browser-based conversion uses the `ultrafast` preset for speed. Edit `services/mp4ConversionService.ts` if you prefer higher quality.
 
-### Faster MP4 conversion
+## Deployment
 
-The app uses ffmpeg.wasm to convert the rendered WebM file into an MP4 file
-directly in the browser. This conversion can be computationally intensive, so a
-fast preset (`ultrafast`) is enabled by default to speed up the process. If you
-prefer higher quality over speed you can modify the preset in
-`services/mp4ConversionService.ts`.
-
-## Deploy to Vercel
-
-When deploying the built app to Vercel, you must ensure the necessary cross-origin isolation headers are sent with every request. Create a `vercel.json` file in the project root with the following contents:
+When deploying to Vercel, create a `vercel.json` file so each request includes the cross-origin headers needed by ffmpeg.wasm:
 
 ```json
 {
   "headers": [
     {
-      "source": "/(.*)",
+      "source": "/*",
       "headers": [
         { "key": "Cross-Origin-Opener-Policy", "value": "same-origin" },
         { "key": "Cross-Origin-Embedder-Policy", "value": "require-corp" }
@@ -55,4 +47,5 @@ When deploying the built app to Vercel, you must ensure the necessary cross-orig
 }
 ```
 
-This configuration ensures Vercel serves the app with the required headers so that ffmpeg.wasm can operate correctly in the browser.
+This ensures the MP4 conversion works correctly in the hosted app.
+
