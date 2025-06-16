@@ -348,7 +348,13 @@ const App: React.FC = () => {
          </div>
       )}
 
-      <div className="w-full max-w-6xl grid grid-cols-1 lg:grid-cols-5 gap-6 lg:gap-8 items-start">
+      <div
+        className={`w-full max-w-6xl grid grid-cols-1 gap-6 lg:gap-8 items-start ${
+          scenes.length > 0 || isGeneratingScenes || isRenderingVideo
+            ? 'lg:grid-cols-5'
+            : 'lg:grid-cols-2'
+        }`}
+      >
         <div className="lg:col-span-2 lg:sticky lg:top-8 space-y-6">
           <div className="p-4 sm:p-6 bg-neutral-800/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-white" style={{ fontFamily: 'Fira Code' }}>1. Enter Your Narration</h2>
