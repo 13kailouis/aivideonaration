@@ -1,4 +1,4 @@
-import React, { useRef, useState, useEffect } from 'react';
+import React, { useRef } from 'react';
 import { TrendingUpIcon, ScissorsIcon, FireIcon } from './IconComponents.tsx';
 
 interface Feature {
@@ -31,25 +31,6 @@ interface MobileFeatureSliderProps {
 
 const MobileFeatureSlider: React.FC<MobileFeatureSliderProps> = ({ features = defaultFeatures }) => {
   const containerRef = useRef<HTMLDivElement>(null);
-  const [activeIndex, setActiveIndex] = useState(0);
-
-  const scrollTo = (idx: number) => {
-    const container = containerRef.current;
-    if (!container) return;
-    const slideWidth = container.clientWidth;
-    container.scrollTo({ left: slideWidth * idx, behavior: 'smooth' });
-  };
-
-  useEffect(() => {
-    const container = containerRef.current;
-    if (!container) return;
-    const handleScroll = () => {
-      const idx = Math.round(container.scrollLeft / container.clientWidth);
-      setActiveIndex(idx);
-    };
-    container.addEventListener('scroll', handleScroll);
-    return () => container.removeEventListener('scroll', handleScroll);
-  }, []);
 
   return (
     <div className="relative w-full sm:hidden">
@@ -72,15 +53,6 @@ const MobileFeatureSlider: React.FC<MobileFeatureSliderProps> = ({ features = de
               </div>
             </div>
           </div>
-        ))}
-      </div>
-      <div className="flex justify-center gap-2 mt-2">
-        {features.map((_, idx) => (
-          <button
-            key={idx}
-            onClick={() => scrollTo(idx)}
-            className={`w-2.5 h-2.5 rounded-full ${idx === activeIndex ? 'bg-fuchsia-500' : 'bg-gray-600'}`}
-          />
         ))}
       </div>
     </div>
