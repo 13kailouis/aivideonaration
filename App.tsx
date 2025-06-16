@@ -328,12 +328,12 @@ const App: React.FC = () => {
     <div className="min-h-screen bg-black text-white flex flex-col items-center p-4 sm:p-6 lg:p-8">
       <header className="mb-6 sm:mb-8 text-center">
         <div className="flex items-center justify-center space-x-3">
-           <SparklesIcon className="w-8 h-8 sm:w-10 sm:h-10 text-fuchsia-400" />
-           <h1
-             className="glitch text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-r from-fuchsia-400 via-pink-500 to-red-500 text-transparent bg-clip-text"
-             style={{ fontFamily: 'Fira Code' }}
-             data-text={APP_TITLE}
-           >
+           <SparklesIcon className="w-8 h-8 sm:w-10 sm:h-10 text-teal-400" />
+          <h1
+            className="glitch text-3xl sm:text-4xl lg:text-5xl font-bold tracking-tight bg-gradient-to-r from-teal-400 via-green-500 to-blue-500 text-transparent bg-clip-text"
+            style={{ fontFamily: 'Fira Code' }}
+            data-text={APP_TITLE}
+          >
              {APP_TITLE}
            </h1>
         </div>
@@ -351,7 +351,7 @@ const App: React.FC = () => {
       <div className="w-full max-w-5xl grid grid-cols-1 lg:grid-cols-3 gap-6 sm:gap-8">
         <div className="lg:col-span-1 space-y-6">
           <div className="bg-gray-900 border border-gray-700 p-4 sm:p-6 rounded-xl shadow-2xl">
-            <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-fuchsia-400" style={{ fontFamily: 'Fira Code' }}>1. Enter Your Narration</h2>
+            <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-teal-400" style={{ fontFamily: 'Fira Code' }}>1. Enter Your Narration</h2>
             <TextInputArea
               value={narrationText}
               onChange={setNarrationText}
@@ -360,7 +360,7 @@ const App: React.FC = () => {
             />
           </div>
           <div className="bg-gray-900 border border-gray-700 p-4 sm:p-6 rounded-xl shadow-2xl">
-             <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-fuchsia-400" style={{ fontFamily: 'Fira Code' }}>2. Configure & Generate</h2>
+             <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-teal-400" style={{ fontFamily: 'Fira Code' }}>2. Configure & Generate</h2>
             <Controls
               aspectRatio={aspectRatio}
               onAspectRatioChange={(ratio) => {
@@ -386,7 +386,7 @@ const App: React.FC = () => {
         </div>
 
         <div className="lg:col-span-2 bg-gray-900 border border-gray-700 p-1 sm:p-2 rounded-xl shadow-2xl">
-           <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4 text-fuchsia-400 px-3 py-2" style={{ fontFamily: 'Fira Code' }}>3. Preview Your Video</h2>
+           <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4 text-teal-400 px-3 py-2" style={{ fontFamily: 'Fira Code' }}>3. Preview Your Video</h2>
           <VideoPreview
             scenes={scenes}
             aspectRatio={aspectRatio}

@@ -11,11 +11,11 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
     <div className="min-h-screen flex flex-col bg-black text-white">
       <header className="bg-black/70 backdrop-blur sticky top-0 z-10">
         <nav className="max-w-6xl mx-auto flex justify-between items-center p-4">
-          <h1 className="text-3xl font-bold text-fuchsia-500" style={{fontFamily:'Fira Code'}}>CineSynth</h1>
+          <h1 className="text-3xl font-bold text-teal-500" style={{fontFamily:'Fira Code'}}>CineSynth</h1>
           <div className="hidden sm:flex items-center gap-6">
-            <a href="#features" className="hover:text-fuchsia-400 transition-colors">Features</a>
+            <a href="#features" className="hover:text-teal-400 transition-colors">Features</a>
             <button
-              className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-4 py-2 rounded-md shadow-lg"
+              className="bg-teal-600 hover:bg-teal-500 text-white px-4 py-2 rounded-md shadow-lg"
               onClick={onGetStarted}
             >
               Launch App
@@ -29,10 +29,10 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           </button>
         </nav>
         {menuOpen && (
-          <div className="sm:hidden fixed inset-0 bg-black/90 backdrop-blur flex flex-col items-center justify-center space-y-6 z-20">
+          <div className="sm:hidden fixed inset-0 bg-black/90 backdrop-blur flex flex-col items-center justify-center space-y-6 z-20 relative text-center">
             <a href="#features" className="text-2xl" onClick={() => setMenuOpen(false)}>Features</a>
             <button
-              className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-6 py-3 rounded-md text-lg shadow-lg"
+              className="bg-teal-600 hover:bg-teal-500 text-white px-6 py-3 rounded-md text-lg shadow-lg"
               onClick={() => { setMenuOpen(false); onGetStarted(); }}
             >
               Launch App
@@ -43,7 +43,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           </div>
         )}
       </header>
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-4">
+      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-20">
         <h2 className="text-4xl sm:text-6xl font-extrabold mb-6">
           Your Marketing Video Sidekick
         </h2>
@@ -53,25 +53,25 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
         <button
           onClick={onGetStarted}
-          className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white text-lg px-8 py-4 rounded-full shadow-xl flex items-center gap-2"
+          className="bg-teal-600 hover:bg-teal-500 text-white text-lg px-8 py-4 rounded-full shadow-xl flex items-center gap-2"
         >
           <SparklesIcon className="w-6 h-6" />
           Get Started
         </button>
 
         <div id="features" className="grid gap-6 sm:grid-cols-3 max-w-4xl mt-12 mb-8 text-left">
-          <div className="p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg">
-            <TrendingUpIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
+          <div className="p-6 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-lg">
+            <TrendingUpIcon className="w-8 h-8 text-teal-500 mb-3" />
             <h3 className="font-semibold text-white">Trend Analysis</h3>
-            <p className="text-gray-400 text-sm mt-1">AI taps into viewer behavior so your content always hits the mark.</p>
+            <p className="text-gray-400 text-sm mt-1">AI dissects audience habits so precisely, it practically manipulates them into watching.</p>
           </div>
-          <div className="p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg">
-            <ScissorsIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
+          <div className="p-6 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-lg">
+            <ScissorsIcon className="w-8 h-8 text-teal-500 mb-3" />
             <h3 className="font-semibold text-white">No Editing Required</h3>
             <p className="text-gray-400 text-sm mt-1">Just talk. We handle visuals, timing and audio sync automatically.</p>
           </div>
-          <div className="p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg">
-            <FireIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
+          <div className="p-6 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-lg">
+            <FireIcon className="w-8 h-8 text-teal-500 mb-3" />
             <h3 className="font-semibold text-white">Controversy Ready</h3>
             <p className="text-gray-400 text-sm mt-1">Create bold videos that spark engagement without the headaches.</p>
           </div>
@@ -80,16 +80,16 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         <section className="w-full py-12 border-t border-gray-800 mt-8">
           <h3 className="text-3xl font-bold mb-8 text-center">Disruptive Extras</h3>
           <div className="grid gap-6 sm:grid-cols-3 max-w-5xl mx-auto text-left">
-            <div className="p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg">
-              <span className="text-fuchsia-500 font-semibold block mb-2">Echo Chamber Amplifier</span>
+            <div className="p-6 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-lg">
+              <span className="text-teal-500 font-semibold block mb-2">Echo Chamber Amplifier</span>
               <p className="text-gray-400 text-sm">Our algorithms map each tribe’s beliefs, letting you magnify the stories they already cling to.</p>
             </div>
-            <div className="p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg">
-              <span className="text-fuchsia-500 font-semibold block mb-2">Trend Jacker</span>
+            <div className="p-6 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-lg">
+              <span className="text-teal-500 font-semibold block mb-2">Trend Jacker</span>
               <p className="text-gray-400 text-sm">We detect the hottest memes and weave them into your narrative within seconds, fueling unstoppable virality.</p>
             </div>
-            <div className="p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg">
-              <span className="text-fuchsia-500 font-semibold block mb-2">Polarizing Hook Generator</span>
+            <div className="p-6 bg-white/10 backdrop-blur-md border border-white/20 rounded-xl shadow-lg">
+              <span className="text-teal-500 font-semibold block mb-2">Polarizing Hook Generator</span>
               <p className="text-gray-400 text-sm">Kick off with lines engineered to divide the room and keep the comment section raging.</p>
             </div>
           </div>
