@@ -351,11 +351,17 @@ const App: React.FC = () => {
       <div
         className={`w-full max-w-6xl grid grid-cols-1 gap-6 lg:gap-8 items-start ${
           scenes.length > 0 || isGeneratingScenes || isRenderingVideo
-            ? 'lg:grid-cols-5'
+            ? 'lg:grid-cols-3'
             : 'lg:grid-cols-2'
         }`}
       >
-        <div className="lg:col-span-2 lg:sticky lg:top-8 space-y-6">
+        <div
+          className={`${
+            scenes.length > 0 || isGeneratingScenes || isRenderingVideo
+              ? 'lg:col-span-1'
+              : 'lg:col-span-2'
+          } lg:sticky lg:top-8 space-y-6`}
+        >
           <div className="p-4 sm:p-6 bg-neutral-800/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-white" style={{ fontFamily: 'Fira Code' }}>1. Enter Your Narration</h2>
             <TextInputArea
@@ -392,7 +398,7 @@ const App: React.FC = () => {
         </div>
 
         {(scenes.length > 0 || isGeneratingScenes || isRenderingVideo) && (
-          <div className="lg:col-span-3 p-1 sm:p-3 bg-neutral-800/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg">
+          <div className="lg:col-span-2 p-1 sm:p-3 bg-neutral-800/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg">
              <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4 text-white px-3 py-2" style={{ fontFamily: 'Fira Code' }}>3. Preview Your Video</h2>
             <VideoPreview
               scenes={scenes}
