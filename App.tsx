@@ -7,7 +7,7 @@ import VideoPreview from './components/VideoPreview.tsx';
 import ProgressBar from './components/ProgressBar.tsx';
 import SceneEditor from './components/SceneEditor.tsx'; // New Component
 import { Scene, AspectRatio, GeminiSceneResponseItem } from './types.ts';
-import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY } from './constants.ts';
+import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY, PREMIUM_ACCESS } from './constants.ts';
 import { analyzeNarrationWithGemini, generateImageWithImagen } from './services/geminiService.ts';
 import { processNarrationToScenes, fetchPlaceholderFootageUrl } from './services/videoService.ts';
 import { generateWebMFromScenes } from './services/videoRenderingService.ts';
@@ -25,10 +25,9 @@ const App: React.FC = () => {
   const [progressMessage, setProgressMessage] = useState<string>('');
   const [progressValue, setProgressValue] = useState<number>(0); 
   const [apiKeyMissing, setApiKeyMissing] = useState<boolean>(false);
-  const [includeSubtitlesOnDownload, setIncludeSubtitlesOnDownload] = useState<boolean>(true);
   const [useAiImages, setUseAiImages] = useState<boolean>(false);
 
-  const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(true);
+  const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(PREMIUM_ACCESS);
   const [ttsPlaybackStatus, setTTSPlaybackStatus] = useState<'idle' | 'playing' | 'paused' | 'ended'>('idle');
   const currentSpeechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const analysisCacheRef = useRef<GeminiSceneResponseItem[] | null>(null);
@@ -188,7 +187,7 @@ const App: React.FC = () => {
       const webmBlob = await generateWebMFromScenes(
         scenes,
         aspectRatio,
-        { includeSubtitles: includeSubtitlesOnDownload },
+        { includeSubtitles: false },
         (p) => {
           setProgressValue(Math.round(p * 100));
           if (p < 0.01) {
@@ -388,13 +387,12 @@ const App: React.FC = () => {
               isGenerating={isGeneratingScenes || isRenderingVideo} 
               hasScenes={scenes.length > 0}
               narrationText={narrationText}
-              includeSubtitlesOnDownload={includeSubtitlesOnDownload}
-              onIncludeSubtitlesChange={setIncludeSubtitlesOnDownload}
               isTTSEnabled={isTTSEnabled}
               onTTSEnabledChange={toggleTTSEnabled}
               ttsSupported={typeof window.speechSynthesis !== 'undefined'}
               useAiImages={useAiImages}
               onUseAiImagesChange={setUseAiImages}
+              isPremium={PREMIUM_ACCESS}
               apiKeyMissing={apiKeyMissing}
             />
           </div>
