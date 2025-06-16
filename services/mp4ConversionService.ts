@@ -26,6 +26,7 @@ export const convertWebMToMP4 = async (
     narrationFile = uniqueName('narration', audioExt);
     await ffmpeg.writeFile(narrationFile, await fetchFile(narrationAudio));
     ffmpegCmd = [
+      '-y',
       '-i', inputName,
       '-i', narrationFile,
       '-c:v', 'libx264',
@@ -37,6 +38,7 @@ export const convertWebMToMP4 = async (
     ];
   } else {
     ffmpegCmd = [
+      '-y',
       '-i', inputName,
       '-c:v', 'libx264',
       '-preset', 'ultrafast',
@@ -52,9 +54,11 @@ export const convertWebMToMP4 = async (
     const message = err instanceof Error ? err.message : String(err);
     throw new Error(`FFmpeg error: ${message}`);
   } finally {
-    ffmpeg.deleteFile(inputName);
-    if (narrationFile) ffmpeg.deleteFile(narrationFile);
-    ffmpeg.deleteFile(outputName);
+    try { ffmpeg.deleteFile(inputName); } catch { /* ignore */ }
+    if (narrationFile) {
+      try { ffmpeg.deleteFile(narrationFile); } catch { /* ignore */ }
+    }
+    try { ffmpeg.deleteFile(outputName); } catch { /* ignore */ }
     ffmpeg.terminate();
   }
 };
