@@ -1,11 +1,43 @@
-import React, { useState } from 'react';
+import React from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import LandingPage from './components/LandingPage.tsx';
 
+const isAppSubdomain =
+  typeof window !== 'undefined' &&
+  (window.location.hostname.startsWith('app.') ||
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1' ||
+    window.location.hash === '#app');
+
+const redirectToSubdomain = () => {
+  if (typeof window === 'undefined') return;
+  if (
+    window.location.hostname === 'localhost' ||
+    window.location.hostname === '127.0.0.1'
+  ) {
+    window.location.hash = '#app';
+    window.location.reload();
+    return;
+  }
+
+  const hostParts = window.location.host.split('.');
+  if (hostParts[0] === 'app') return; // already there
+  if (hostParts.length > 1) {
+    hostParts[0] = 'app';
+  } else {
+    hostParts.unshift('app');
+  }
+  const newHost = hostParts.join('.');
+  const url = `${window.location.protocol}//${newHost}${window.location.pathname}`;
+  window.location.href = url;
+};
+
 const Root: React.FC = () => {
-  const [started, setStarted] = useState(false);
-  return started ? <App /> : <LandingPage onGetStarted={() => setStarted(true)} />;
+  if (isAppSubdomain) {
+    return <App />;
+  }
+  return <LandingPage onGetStarted={redirectToSubdomain} />;
 };
 
 const rootElement = document.getElementById('root');

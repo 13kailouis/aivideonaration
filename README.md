@@ -23,6 +23,8 @@ CineSynth transforms text scripts into marketing-ready videos in minutes. Powere
    npm run dev
    ```
 
+During development the app and landing page run on the same domain. Click **Get Started** on the landing page to load the main editor. When deployed, the landing page should live on your root domain with the editor served from an `app.` subdomain. This behaviour is handled automatically by the code.
+
 Development mode automatically provides the required cross-origin isolation headers so ffmpeg.wasm can use `SharedArrayBuffer`. Always run the app via `npm run dev` or `npm run preview` after building.
 
 ### Faster MP4 Conversion
