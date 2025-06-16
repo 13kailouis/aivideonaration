@@ -1,6 +1,7 @@
 import React, { useState } from 'react';
-import { SparklesIcon, MenuIcon, CloseIcon, TrendingUpIcon, ScissorsIcon, FireIcon, QuoteIcon } from './IconComponents.tsx';
+import { SparklesIcon, MenuIcon, CloseIcon, TrendingUpIcon, ScissorsIcon, FireIcon, QuoteIcon, ChartIcon, ShareIcon } from './IconComponents.tsx';
 import TypewriterText from './TypewriterText.tsx';
+import FeatureCard from './FeatureCard.tsx';
 import FadeInSection from './FadeInSection.tsx';
 
 interface LandingPageProps {
@@ -73,34 +74,18 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           Get Started
         </button>
 
-        <div id="features" className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6 w-full max-w-4xl mt-12 mb-8 text-left px-2">
-          <FadeInSection>
-            <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
-              <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
-              <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <TrendingUpIcon className="relative z-10 w-8 h-8 text-white mb-3" />
-              <h3 className="relative z-10 font-semibold text-white group-hover:text-fuchsia-200 transition-colors duration-500">Trend Analysis</h3>
-              <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">AI exposes your audience's deepest impulses so your content always hits the mark.</p>
+        <div id="features" className="w-full max-w-4xl mt-12 mb-8 text-left px-2 flex gap-4 overflow-x-auto sm:grid sm:grid-cols-3 sm:gap-6 sm:overflow-visible">
+          {[
+            { icon: TrendingUpIcon, title: 'Trend Analysis', description: "AI exposes your audience's deepest impulses so your content always hits the mark." },
+            { icon: ScissorsIcon, title: 'No Editing Required', description: 'Just talk. We handle visuals, timing and audio sync automatically.' },
+            { icon: FireIcon, title: 'Controversy Ready', description: 'Create bold videos that spark engagement without the headaches.' },
+            { icon: ChartIcon, title: 'Analytics Dashboard', description: 'Track performance and refine your strategy with built-in metrics.' },
+            { icon: ShareIcon, title: 'Share Anywhere', description: 'Optimized exports for every major social platform.' },
+          ].map((feat) => (
+            <div key={feat.title} className="min-w-[80%] sm:min-w-0">
+              <FeatureCard icon={feat.icon} title={feat.title} description={feat.description} />
             </div>
-          </FadeInSection>
-          <FadeInSection>
-            <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
-              <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
-              <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <ScissorsIcon className="relative z-10 w-8 h-8 text-white mb-3" />
-              <h3 className="relative z-10 font-semibold text-white group-hover:text-fuchsia-200 transition-colors duration-500">No Editing Required</h3>
-              <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">Just talk. We handle visuals, timing and audio sync automatically.</p>
-            </div>
-          </FadeInSection>
-          <FadeInSection>
-            <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
-              <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
-              <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <FireIcon className="relative z-10 w-8 h-8 text-white mb-3" />
-              <h3 className="relative z-10 font-semibold text-white group-hover:text-fuchsia-200 transition-colors duration-500">Controversy Ready</h3>
-              <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">Create bold videos that spark engagement without the headaches.</p>
-            </div>
-          </FadeInSection>
+          ))}
         </div>
 
         <section className="w-full py-12 border-t border-gray-800 mt-8">
