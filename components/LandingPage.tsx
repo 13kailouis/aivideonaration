@@ -2,6 +2,7 @@ import React, { useState } from 'react';
 import { SparklesIcon, MenuIcon, CloseIcon, TrendingUpIcon, ScissorsIcon, FireIcon, QuoteIcon } from './IconComponents.tsx';
 import TypewriterText from './TypewriterText.tsx';
 import FadeInSection from './FadeInSection.tsx';
+import MobileFeatureSlider from './MobileFeatureSlider.tsx';
 
 interface LandingPageProps {
   onGetStarted: () => void;
@@ -73,7 +74,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           Get Started
         </button>
 
-        <div id="features" className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6 w-full max-w-4xl mt-12 mb-8 text-left px-2">
+        <div id="features" className="w-full max-w-4xl mt-12 mb-8 text-left px-2">
+          <MobileFeatureSlider />
+          <div className="hidden sm:grid grid-cols-1 sm:grid-cols-3 gap-4 sm:gap-6 mt-4">
           <FadeInSection>
             <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
@@ -101,6 +104,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
               <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm mt-1 transition-colors duration-500">Create bold videos that spark engagement without the headaches.</p>
             </div>
           </FadeInSection>
+          </div>
         </div>
 
         <section className="w-full py-12 border-t border-gray-800 mt-8">
