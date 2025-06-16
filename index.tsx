@@ -2,10 +2,20 @@ import React, { useState } from 'react';
 import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import LandingPage from './components/LandingPage.tsx';
+import { LAUNCH_URL } from './constants.ts';
 
 const Root: React.FC = () => {
   const [started, setStarted] = useState(false);
-  return started ? <App /> : <LandingPage onGetStarted={() => setStarted(true)} />;
+
+  const handleGetStarted = () => {
+    if (LAUNCH_URL) {
+      window.location.href = LAUNCH_URL;
+    } else {
+      setStarted(true);
+    }
+  };
+
+  return started ? <App /> : <LandingPage onGetStarted={handleGetStarted} />;
 };
 
 const rootElement = document.getElementById('root');

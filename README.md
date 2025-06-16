@@ -17,7 +17,7 @@ CineSynth transforms text scripts into marketing-ready videos in minutes. Powere
    ```bash
    npm install
    ```
-2. Create a `.env.local` file and set `GEMINI_API_KEY`. Optionally add `PEXELS_API_KEY` for higher quality placeholder images.
+2. Create a `.env.local` file and set `GEMINI_API_KEY`. Optionally add `PEXELS_API_KEY` for higher quality placeholder images. If the landing page should redirect to another domain when starting the app, set `LAUNCH_URL` to that URL.
 3. Start the development server
    ```bash
    npm run dev
@@ -48,4 +48,8 @@ When deploying to Vercel, create a `vercel.json` file so each request includes t
 ```
 
 This ensures the MP4 conversion works correctly in the hosted app.
+
+If the landing page is served separately from the full editor, provide the
+target URL in a `LAUNCH_URL` environment variable. Visitors clicking
+**Get Started** will be redirected there.
 
