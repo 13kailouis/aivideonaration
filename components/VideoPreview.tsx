@@ -306,12 +306,13 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
             <div className="absolute top-0 left-0 h-1 bg-white transition-all duration-100 ease-linear" style={{ width: `${(elapsedTime / ((currentScene?.duration || 1) * 1000)) * 100}%` }}></div>
         )}
       </div>
-      {scenes.length > 0 && (
-        <div className="mt-2 h-2 bg-neutral-800 rounded-full overflow-hidden">
-          <div className="h-full bg-white" style={{ width: `${totalDuration > 0 ? (playedDuration / totalDuration) * 100 : 0}%`, transition: playedDuration > 0 ? 'width 0.1s linear' : 'none' }}></div>
-        </div>
-      )}
-      <div className="mt-3 flex items-center justify-between space-x-2">
+      <div className="sm:static fixed inset-x-0 bottom-0 sm:mt-3 mt-0 bg-black/80 sm:bg-transparent p-2 sm:p-0 backdrop-blur-md sm:backdrop-blur-none z-20">
+        {scenes.length > 0 && (
+          <div className="mb-2 h-2 bg-neutral-800 rounded-full overflow-hidden">
+            <div className="h-full bg-white" style={{ width: `${totalDuration > 0 ? (playedDuration / totalDuration) * 100 : 0}%`, transition: playedDuration > 0 ? 'width 0.1s linear' : 'none' }}></div>
+          </div>
+        )}
+      <div className="flex items-center justify-between space-x-2">
         <div className="flex items-center space-x-2">
           <button
             onClick={handlePlayPause}
@@ -345,6 +346,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
           <DownloadIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
           {isDownloading ? 'Rendering Video...' : 'Download Video'}
         </button>
+      </div>
       </div>
     </div>
   );
