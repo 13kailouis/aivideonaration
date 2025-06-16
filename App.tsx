@@ -385,22 +385,24 @@ const App: React.FC = () => {
           </div>
         </div>
 
-        <div className="lg:col-span-2 p-1 sm:p-2 bg-neutral-900/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg">
-           <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4 text-white px-3 py-2" style={{ fontFamily: 'Fira Code' }}>3. Preview Your Video</h2>
-          <VideoPreview
-            scenes={scenes}
-            aspectRatio={aspectRatio}
-            onDownloadRequest={handleDownloadVideo}
-            isGenerating={isGeneratingScenes} 
-            isDownloading={isRenderingVideo}
-            isTTSEnabled={isTTSEnabled}
-            onTTSPlay={handleTTSPlay}
-            onTTSPause={handleTTSPause}
-            onTTSResume={handleTTSResume}
-            onTTSStop={handleTTSStop}
-            ttsPlaybackStatus={ttsPlaybackStatus}
-          />
-        </div>
+        {(scenes.length > 0 || isGeneratingScenes || isRenderingVideo) && (
+          <div className="lg:col-span-2 p-1 sm:p-2 bg-neutral-900/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg">
+             <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4 text-white px-3 py-2" style={{ fontFamily: 'Fira Code' }}>3. Preview Your Video</h2>
+            <VideoPreview
+              scenes={scenes}
+              aspectRatio={aspectRatio}
+              onDownloadRequest={handleDownloadVideo}
+              isGenerating={isGeneratingScenes}
+              isDownloading={isRenderingVideo}
+              isTTSEnabled={isTTSEnabled}
+              onTTSPlay={handleTTSPlay}
+              onTTSPause={handleTTSPause}
+              onTTSResume={handleTTSResume}
+              onTTSStop={handleTTSStop}
+              ttsPlaybackStatus={ttsPlaybackStatus}
+            />
+          </div>
+        )}
       </div>
       
       {scenes.length > 0 && !isGeneratingScenes && !isRenderingVideo && (
