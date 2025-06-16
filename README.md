@@ -8,7 +8,7 @@ CineSynth transforms text scripts into marketing-ready videos in minutes. Powere
 
 - Smart narration analysis with Google Gemini
 - Automatic editing and subtitle generation
-- Optional AI‑generated imagery using Imagen
+- Premium: AI‑generated imagery and TTS narration
 - Premium: One-click AI video generation
 - Browser-based WebM to MP4 conversion via ffmpeg.wasm
 

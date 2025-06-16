@@ -32,7 +32,7 @@ const App: React.FC = () => {
   const [useAiImages, setUseAiImages] = useState<boolean>(false);
   const [useAiVideo, setUseAiVideo] = useState<boolean>(false);
 
-  const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(true);
+  const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(premiumUser);
   const [ttsPlaybackStatus, setTTSPlaybackStatus] = useState<'idle' | 'playing' | 'paused' | 'ended'>('idle');
   const currentSpeechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const analysisCacheRef = useRef<GeminiSceneResponseItem[] | null>(null);
