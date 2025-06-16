@@ -7,12 +7,14 @@ import VideoPreview from './components/VideoPreview.tsx';
 import ProgressBar from './components/ProgressBar.tsx';
 import SceneEditor from './components/SceneEditor.tsx'; // New Component
 import { Scene, AspectRatio, GeminiSceneResponseItem } from './types.ts';
-import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY } from './constants.ts';
+import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY, IS_PREMIUM_USER } from './constants.ts';
 import { analyzeNarrationWithGemini, generateImageWithImagen } from './services/geminiService.ts';
 import { processNarrationToScenes, fetchPlaceholderFootageUrl } from './services/videoService.ts';
 import { generateWebMFromScenes } from './services/videoRenderingService.ts';
 import { convertWebMToMP4 } from './services/mp4ConversionService.ts';
 import { SparklesIcon } from './components/IconComponents.tsx';
+
+const premiumUser = IS_PREMIUM_USER;
 
 const App: React.FC = () => {
   const [narrationText, setNarrationText] = useState<string>('');
@@ -25,7 +27,7 @@ const App: React.FC = () => {
   const [progressMessage, setProgressMessage] = useState<string>('');
   const [progressValue, setProgressValue] = useState<number>(0); 
   const [apiKeyMissing, setApiKeyMissing] = useState<boolean>(false);
-  const [includeSubtitlesOnDownload, setIncludeSubtitlesOnDownload] = useState<boolean>(true);
+  const [includeWatermark, setIncludeWatermark] = useState<boolean>(false);
   const [useAiImages, setUseAiImages] = useState<boolean>(false);
 
   const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(true);
@@ -188,7 +190,7 @@ const App: React.FC = () => {
       const webmBlob = await generateWebMFromScenes(
         scenes,
         aspectRatio,
-        { includeSubtitles: includeSubtitlesOnDownload },
+        { includeWatermark: includeWatermark },
         (p) => {
           setProgressValue(Math.round(p * 100));
           if (p < 0.01) {
@@ -388,14 +390,15 @@ const App: React.FC = () => {
               isGenerating={isGeneratingScenes || isRenderingVideo} 
               hasScenes={scenes.length > 0}
               narrationText={narrationText}
-              includeSubtitlesOnDownload={includeSubtitlesOnDownload}
-              onIncludeSubtitlesChange={setIncludeSubtitlesOnDownload}
+              includeWatermark={includeWatermark}
+              onIncludeWatermarkChange={setIncludeWatermark}
               isTTSEnabled={isTTSEnabled}
               onTTSEnabledChange={toggleTTSEnabled}
               ttsSupported={typeof window.speechSynthesis !== 'undefined'}
               useAiImages={useAiImages}
               onUseAiImagesChange={setUseAiImages}
               apiKeyMissing={apiKeyMissing}
+              isPremiumUser={premiumUser}
             />
           </div>
         </div>

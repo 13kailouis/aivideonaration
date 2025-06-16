@@ -10,14 +10,15 @@ interface ControlsProps {
   isGenerating: boolean;
   hasScenes: boolean;
   narrationText: string; // Added to disable button if no text
-  includeSubtitlesOnDownload: boolean;
-  onIncludeSubtitlesChange: (include: boolean) => void;
+  includeWatermark: boolean;
+  onIncludeWatermarkChange: (include: boolean) => void;
   isTTSEnabled: boolean;
   onTTSEnabledChange: (enabled: boolean) => void;
   ttsSupported: boolean;
   useAiImages: boolean;
   onUseAiImagesChange: (use: boolean) => void;
   apiKeyMissing: boolean; // Added to disable generate button
+  isPremiumUser: boolean;
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -27,14 +28,15 @@ const Controls: React.FC<ControlsProps> = ({
   isGenerating,
   hasScenes,
   narrationText,
-  includeSubtitlesOnDownload,
-  onIncludeSubtitlesChange,
+  includeWatermark,
+  onIncludeWatermarkChange,
   isTTSEnabled,
   onTTSEnabledChange,
   ttsSupported,
   useAiImages,
   onUseAiImagesChange,
   apiKeyMissing,
+  isPremiumUser,
 }) => {
   const canGenerate = !isGenerating && narrationText.trim() !== '' && !apiKeyMissing;
 
@@ -70,24 +72,25 @@ const Controls: React.FC<ControlsProps> = ({
             type="checkbox"
             checked={useAiImages}
             onChange={(e) => onUseAiImagesChange(e.target.checked)}
-            disabled={isGenerating || apiKeyMissing}
+            disabled={isGenerating || apiKeyMissing || !isPremiumUser}
             className="h-4 w-4 text-white border-neutral-600 rounded focus:ring-white bg-neutral-800 mr-2 disabled:opacity-50"
           />
           Use AI-Generated Images <span className="text-xs text-gray-400 ml-1">(Slower, uses more quota)</span>
+          {!isPremiumUser && <span className="ml-1 text-xs text-yellow-400">(Premium)</span>}
         </label>
       </div>
 
       <div>
-        <label htmlFor="includeSubtitles" className="flex items-center text-sm font-medium text-gray-300 mb-1 cursor-pointer select-none">
+        <label htmlFor="includeWatermark" className="flex items-center text-sm font-medium text-gray-300 mb-1 cursor-pointer select-none">
           <input
-            id="includeSubtitles"
+            id="includeWatermark"
             type="checkbox"
-            checked={includeSubtitlesOnDownload}
-            onChange={(e) => onIncludeSubtitlesChange(e.target.checked)}
+            checked={includeWatermark}
+            onChange={(e) => onIncludeWatermarkChange(e.target.checked)}
             disabled={isGenerating}
             className="h-4 w-4 text-white border-neutral-600 rounded focus:ring-white bg-neutral-800 mr-2 disabled:opacity-50"
           />
-          Include subtitles in download
+          Add watermark to download
         </label>
       </div>
        {ttsSupported && (
@@ -98,10 +101,11 @@ const Controls: React.FC<ControlsProps> = ({
               type="checkbox"
               checked={isTTSEnabled}
               onChange={(e) => onTTSEnabledChange(e.target.checked)}
-              disabled={isGenerating}
+              disabled={isGenerating || !isPremiumUser}
               className="h-4 w-4 text-white border-neutral-600 rounded focus:ring-white bg-neutral-800 mr-2 disabled:opacity-50"
             />
             Enable TTS Narration (Preview)
+            {!isPremiumUser && <span className="ml-1 text-xs text-yellow-400">(Premium)</span>}
           </label>
         </div>
        )}
