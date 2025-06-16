@@ -188,8 +188,15 @@ const App: React.FC = () => {
         }
       );
 
+      let narrationAudio: Blob | undefined = undefined;
+      if (isTTSEnabled) {
+        setProgressMessage('Generating narration audio...');
+        const narrationTextCombined = scenes.map(s => s.sceneText).join(' ');
+        narrationAudio = await generateSpeechAudio(narrationTextCombined);
+      }
+
       setProgressMessage('Converting to MP4...');
-      const mp4Blob = await convertWebMToMP4(webmBlob, (convProg) => {
+      const mp4Blob = await convertWebMToMP4(webmBlob, narrationAudio, (convProg) => {
         setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
         setProgressValue(100 - Math.round((1 - convProg) * 5));
       });
