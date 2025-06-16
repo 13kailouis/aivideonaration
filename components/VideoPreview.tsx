@@ -302,15 +302,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
             />
           ) : null
         ))}
-        {currentScene && isPlaying && (
-            <div className="absolute top-0 left-0 h-1 bg-white transition-all duration-100 ease-linear" style={{ width: `${(elapsedTime / ((currentScene?.duration || 1) * 1000)) * 100}%` }}></div>
-        )}
       </div>
-      {scenes.length > 0 && (
-        <div className="mt-2 h-2 bg-neutral-800 rounded-full overflow-hidden">
-          <div className="h-full bg-white" style={{ width: `${totalDuration > 0 ? (playedDuration / totalDuration) * 100 : 0}%`, transition: playedDuration > 0 ? 'width 0.1s linear' : 'none' }}></div>
-        </div>
-      )}
       <div className="mt-3 flex items-center justify-between space-x-2">
         <div className="flex items-center space-x-2">
           <button
