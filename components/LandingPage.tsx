@@ -9,8 +9,8 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
   const [menuOpen, setMenuOpen] = useState(false);
   return (
     <div className="min-h-screen flex flex-col bg-black text-white">
-      <header className="bg-black/70 backdrop-blur sticky top-0 z-10">
-        <nav className="max-w-6xl mx-auto flex justify-between items-center p-4">
+      <header className="bg-black/70 backdrop-blur sticky top-0 z-10 py-3 border-b border-gray-800">
+        <nav className="max-w-6xl mx-auto flex justify-between items-center px-4">
           <h1 className="text-3xl font-bold text-fuchsia-500" style={{fontFamily:'Fira Code'}}>CineSynth</h1>
           <div className="hidden sm:flex items-center gap-6">
             <a href="#features" className="hover:text-fuchsia-400 transition-colors">Features</a>
@@ -28,22 +28,34 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             {menuOpen ? <CloseIcon className="w-6 h-6" /> : <MenuIcon className="w-6 h-6" />}
           </button>
         </nav>
-        {menuOpen && (
-          <div className="sm:hidden fixed inset-0 bg-black/90 backdrop-blur flex flex-col items-center justify-center space-y-6 z-20">
-            <a href="#features" className="text-2xl" onClick={() => setMenuOpen(false)}>Features</a>
-            <button
-              className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-6 py-3 rounded-md text-lg shadow-lg"
-              onClick={() => { setMenuOpen(false); onGetStarted(); }}
-            >
-              Launch App
-            </button>
-            <button className="absolute top-4 right-4 p-2" onClick={() => setMenuOpen(false)}>
-              <CloseIcon className="w-6 h-6" />
-            </button>
-          </div>
-        )}
+          {menuOpen && (
+            <div className="sm:hidden fixed inset-0 bg-black/90 backdrop-blur flex flex-col items-center justify-center space-y-6 z-20 text-center">
+              <a
+                href="#features"
+                className="text-2xl w-full"
+                onClick={() => setMenuOpen(false)}
+              >
+                Features
+              </a>
+              <button
+                className="bg-fuchsia-600 hover:bg-fuchsia-500 text-white px-6 py-3 rounded-md text-lg shadow-lg w-3/4"
+                onClick={() => {
+                  setMenuOpen(false);
+                  onGetStarted();
+                }}
+              >
+                Launch App
+              </button>
+              <button
+                className="absolute top-4 right-4 p-2"
+                onClick={() => setMenuOpen(false)}
+              >
+                <CloseIcon className="w-6 h-6" />
+              </button>
+            </div>
+          )}
       </header>
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-4">
+      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 mt-8 sm:mt-16">
         <h2 className="text-4xl sm:text-6xl font-extrabold mb-6">
           Your Marketing Video Sidekick
         </h2>
@@ -59,18 +71,21 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           Get Started
         </button>
 
-        <div id="features" className="grid gap-6 sm:grid-cols-3 max-w-4xl mt-12 mb-8 text-left">
-          <div className="p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg">
+        <div
+          id="features"
+          className="grid gap-6 grid-flow-col auto-cols-[80%] overflow-x-auto snap-x snap-mandatory sm:grid-cols-3 sm:overflow-visible sm:auto-cols-auto max-w-4xl mt-12 mb-8 text-left"
+        >
+          <div className="p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg snap-center">
             <TrendingUpIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
             <h3 className="font-semibold text-white">Trend Analysis</h3>
-            <p className="text-gray-400 text-sm mt-1">AI taps into viewer behavior so your content always hits the mark.</p>
+            <p className="text-gray-400 text-sm mt-1">AI weaponizes viewer habits so your content crushes the competition.</p>
           </div>
-          <div className="p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg">
+          <div className="p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg snap-center">
             <ScissorsIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
             <h3 className="font-semibold text-white">No Editing Required</h3>
             <p className="text-gray-400 text-sm mt-1">Just talk. We handle visuals, timing and audio sync automatically.</p>
           </div>
-          <div className="p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg">
+          <div className="p-6 bg-gray-900 border border-gray-700 rounded-xl shadow-lg snap-center">
             <FireIcon className="w-8 h-8 text-fuchsia-500 mb-3" />
             <h3 className="font-semibold text-white">Controversy Ready</h3>
             <p className="text-gray-400 text-sm mt-1">Create bold videos that spark engagement without the headaches.</p>
