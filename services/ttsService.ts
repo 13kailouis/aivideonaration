@@ -1,5 +1,6 @@
 import { GoogleGenAI } from '@google/genai';
 import mime from 'mime';
+import { Buffer } from 'buffer';
 import { API_KEY } from '../constants.ts';
 
 interface WavConversionOptions {
