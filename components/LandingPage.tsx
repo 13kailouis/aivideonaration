@@ -51,7 +51,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           </div>
         )}
       </header>
-      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-24">
+      <main className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-24 pb-32">
         <h2 className="text-4xl sm:text-6xl font-extrabold mb-6 bg-gradient-to-br from-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
           <TypewriterText
             phrases={[
@@ -166,6 +166,14 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           </div>
         </section>
       </main>
+      <div className="sm:hidden fixed bottom-4 inset-x-0 flex justify-center pointer-events-none">
+        <button
+          onClick={onGetStarted}
+          className="pointer-events-auto bg-white text-black px-6 py-3 rounded-full shadow-lg"
+        >
+          Launch App
+        </button>
+      </div>
       <footer className="p-4 text-center text-gray-500 text-sm">
         <p>&copy; {new Date().getFullYear()} CineSynth. AI that disrupts filmmaking.</p>
       </footer>
