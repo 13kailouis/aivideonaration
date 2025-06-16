@@ -67,7 +67,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
         <button
           onClick={onGetStarted}
-          className="bg-white text-black text-lg px-8 py-4 rounded-full shadow-xl flex items-center gap-2 hover:bg-gray-200"
+          className="bg-gradient-to-r from-purple-500 to-pink-500 text-white text-lg px-8 py-4 rounded-full shadow-xl flex items-center gap-2 hover:from-purple-600 hover:to-pink-600"
         >
           <SparklesIcon className="w-6 h-6" />
           Get Started
