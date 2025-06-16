@@ -169,10 +169,15 @@ const App: React.FC = () => {
     }
 
     try {
+      setProgressMessage('Generating narration audio...');
+      setProgressValue(0);
+      const narrationTextFull = scenes.map(s => s.sceneText).join(' ');
+      const narrationAudio = await synthesizeSpeech(narrationTextFull);
+
       const webmBlob = await generateWebMFromScenes(
         scenes,
         aspectRatio,
-        { includeSubtitles: includeSubtitlesOnDownload },
+        { includeSubtitles: includeSubtitlesOnDownload, narrationAudio },
         (p) => {
           setProgressValue(Math.round(p * 100));
           if (p < 0.01) {

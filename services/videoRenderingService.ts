@@ -16,6 +16,7 @@ const MEDIA_RECORDER_TIMESLICE_MS = 100; // Get data every 100ms
 
 interface VideoRenderOptions {
   includeSubtitles: boolean;
+  narrationAudio?: Blob; // optional audio track to include
 }
 
 interface PreloadedImage {
@@ -266,6 +267,26 @@ export const generateWebMFromScenes = (
         const stream = canvas.captureStream(VIDEO_FPS);
         console.log(`[Video Rendering Service] Canvas stream captured at ${VIDEO_FPS} FPS.`);
 
+        let combinedStream: MediaStream = stream;
+        let audioElement: HTMLAudioElement | null = null;
+        if (options.narrationAudio) {
+            try {
+                audioElement = new Audio();
+                audioElement.src = URL.createObjectURL(options.narrationAudio);
+                const audioStream = (audioElement as any).captureStream?.() || (audioElement as any).mozCaptureStream?.();
+                if (audioStream && audioStream.getAudioTracks().length > 0) {
+                    combinedStream = new MediaStream([
+                        ...stream.getVideoTracks(),
+                        ...audioStream.getAudioTracks(),
+                    ]);
+                } else {
+                    console.warn('[Video Rendering Service] captureStream not supported on audio element. Video will be silent.');
+                }
+            } catch (err) {
+                console.warn('[Video Rendering Service] Failed to capture audio stream:', err);
+            }
+        }
+
         let mimeType = 'video/webm;codecs=vp8'; // Prioritize VP8 for compatibility
         if (!MediaRecorder.isTypeSupported(mimeType)) {
             console.warn(`[Video Rendering Service] VP8 MIME type not supported, trying VP9.`);
@@ -282,7 +303,7 @@ export const generateWebMFromScenes = (
         }
         console.log(`[Video Rendering Service] Using MIME type: ${mimeType}`);
 
-        mediaRecorder = new MediaRecorder(stream, {
+        mediaRecorder = new MediaRecorder(combinedStream, {
             mimeType,
             videoBitsPerSecond: SUGGESTED_VIDEO_BITRATE
         });
@@ -298,7 +319,11 @@ export const generateWebMFromScenes = (
         mediaRecorder.onstop = () => {
           streamEndedCleanly = true;
           console.log('[Video Rendering Service] MediaRecorder stopped. Total chunks:', recordedChunks.length);
-          if (stream.getTracks) stream.getTracks().forEach(track => track.stop());
+          if (combinedStream.getTracks) combinedStream.getTracks().forEach(track => track.stop());
+          if (audioElement) {
+            audioElement.pause();
+            URL.revokeObjectURL(audioElement.src);
+          }
           
           if (recordedChunks.length === 0) {
               console.warn('[Video Rendering Service] No data recorded. This might result in an empty or very short video.');
@@ -320,7 +345,7 @@ export const generateWebMFromScenes = (
               errorName = `Event type: ${event.type}`;
           }
           console.error(`[Video Rendering Service] MediaRecorder error: ${errorName}`, mediaRecorderError || event);
-          if (stream.getTracks) stream.getTracks().forEach(track => track.stop());
+          if (combinedStream.getTracks) combinedStream.getTracks().forEach(track => track.stop());
           if (animationFrameId) cancelAnimationFrame(animationFrameId);
           if (!streamEndedCleanly) { // Avoid double rejection if onstop is also called
             reject(new Error(`MediaRecorder error: ${errorName}`));
@@ -329,6 +354,9 @@ export const generateWebMFromScenes = (
         
         console.log('[Video Rendering Service] Starting MediaRecorder with timeslice:', MEDIA_RECORDER_TIMESLICE_MS);
         mediaRecorder.start(MEDIA_RECORDER_TIMESLICE_MS);
+        if (audioElement) {
+            try { await audioElement.play(); } catch (e) { console.warn('[Video Rendering Service] Failed to play narration audio:', e); }
+        }
 
         let currentSceneIndex = 0;
         let currentFrameInScene = 0;
