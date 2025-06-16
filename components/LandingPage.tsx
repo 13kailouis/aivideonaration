@@ -52,7 +52,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         )}
       </header>
       <main className="flex-1 flex flex-col items-center justify-center text-center px-4 pt-24">
-        <h2 className="text-4xl sm:text-6xl font-extrabold mb-6 bg-gradient-to-br from-fuchsia-400 to-cyan-400 bg-clip-text text-transparent">
+        <h2 className="text-4xl sm:text-6xl font-extrabold mb-6 bg-gradient-to-br from-fuchsia-400 to-cyan-400 bg-clip-text text-transparent leading-tight min-h-[5rem] sm:min-h-[6rem]">
           <TypewriterText
             phrases={[
               'Your Marketing Video Sidekick',
@@ -73,9 +73,9 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           Get Started
         </button>
 
-        <div id="features" className="grid grid-cols-1 gap-4 sm:grid-cols-3 sm:gap-6 w-full max-w-4xl mt-12 mb-8 text-left px-2">
+        <div id="features" className="flex overflow-x-auto snap-x snap-mandatory scroll-pl-4 sm:scroll-pl-0 gap-4 w-full max-w-4xl mt-12 mb-8 text-left px-2 no-scrollbar sm:grid sm:grid-cols-3 sm:gap-6 sm:overflow-visible sm:snap-none">
           <FadeInSection>
-            <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
+            <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group snap-center shrink-0 w-72 sm:w-auto">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <TrendingUpIcon className="relative z-10 w-8 h-8 text-white mb-3" />
@@ -84,7 +84,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             </div>
           </FadeInSection>
           <FadeInSection>
-            <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
+            <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group snap-center shrink-0 w-72 sm:w-auto">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <ScissorsIcon className="relative z-10 w-8 h-8 text-white mb-3" />
@@ -93,7 +93,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
             </div>
           </FadeInSection>
           <FadeInSection>
-            <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
+            <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group snap-center shrink-0 w-72 sm:w-auto">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-fuchsia-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-gradient-to-br from-fuchsia-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <FireIcon className="relative z-10 w-8 h-8 text-white mb-3" />
