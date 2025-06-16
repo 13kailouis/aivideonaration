@@ -1,6 +1,8 @@
 import { FFmpeg } from '@ffmpeg/ffmpeg';
 import { fetchFile } from '@ffmpeg/util';
 
+const uniqueName = (base: string, ext: string) => `${base}_${Date.now()}.${ext}`;
+
 export const convertWebMToMP4 = async (
   webmBlob: Blob,
   narrationAudio?: Blob,
@@ -13,32 +15,39 @@ export const convertWebMToMP4 = async (
   if (!ffmpeg.loaded) {
     await ffmpeg.load();
   }
-  await ffmpeg.writeFile('input.webm', await fetchFile(webmBlob));
+  const inputName = uniqueName('input', 'webm');
+  const outputName = uniqueName('output', 'mp4');
+  await ffmpeg.writeFile(inputName, await fetchFile(webmBlob));
   let ffmpegCmd: string[];
+  let narrationFile: string | undefined = undefined;
   if (narrationAudio) {
     const audioExt = narrationAudio.type.split('/')[1] || 'wav';
-    const audioFile = `narration.${audioExt}`;
-    await ffmpeg.writeFile(audioFile, await fetchFile(narrationAudio));
+    narrationFile = uniqueName('narration', audioExt);
+    await ffmpeg.writeFile(narrationFile, await fetchFile(narrationAudio));
     ffmpegCmd = [
-      '-i', 'input.webm',
-      '-i', audioFile,
+      '-i', inputName,
+      '-i', narrationFile,
       '-c:v', 'libx264',
       '-preset', 'ultrafast',
       '-pix_fmt', 'yuv420p',
       '-c:a', 'aac',
       '-shortest',
-      'output.mp4'
+      outputName
     ];
   } else {
     ffmpegCmd = [
-      '-i', 'input.webm',
+      '-i', inputName,
       '-c:v', 'libx264',
       '-preset', 'ultrafast',
       '-pix_fmt', 'yuv420p',
-      'output.mp4'
+      outputName
     ];
   }
   await ffmpeg.exec(ffmpegCmd);
-  const data = await ffmpeg.readFile('output.mp4');
+  const data = await ffmpeg.readFile(outputName);
+  // cleanup
+  ffmpeg.deleteFile(inputName);
+  if (narrationFile) ffmpeg.deleteFile(narrationFile);
+  ffmpeg.deleteFile(outputName);
   return new Blob([data], { type: 'video/mp4' });
 };
