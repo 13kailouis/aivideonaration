@@ -85,25 +85,13 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
         <section className="w-full py-12 border-t border-gray-800 mt-8">
           <h3 className="text-3xl font-bold mb-8 text-center">Disruptive Extras</h3>
-          <div className="flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:gap-6 sm:overflow-visible max-w-5xl mx-auto text-left snap-x sm:snap-none">
-            <div className="relative shrink-0 snap-start sm:snap-none p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group w-72 sm:w-auto">
-              <div className="absolute -top-5 -right-5 w-24 h-24 bg-violet-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
-              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <span className="relative z-10 text-white font-semibold block mb-2 group-hover:text-violet-200 transition-colors duration-500">Echo Chamber Amplifier</span>
-              <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm">Our algorithms map each tribe’s beliefs, letting you magnify the stories they already cling to.</p>
-            </div>
-            <div className="relative shrink-0 snap-start sm:snap-none p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group w-72 sm:w-auto">
-              <div className="absolute -top-5 -right-5 w-24 h-24 bg-violet-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
-              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <span className="relative z-10 text-white font-semibold block mb-2 group-hover:text-violet-200 transition-colors duration-500">Trend Jacker</span>
-              <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm">We detect the hottest memes and weave them into your narrative within seconds, fueling unstoppable virality.</p>
-            </div>
-            <div className="relative shrink-0 snap-start sm:snap-none p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group w-72 sm:w-auto">
-              <div className="absolute -top-5 -right-5 w-24 h-24 bg-violet-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
-              <div className="absolute inset-0 bg-gradient-to-br from-violet-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
-              <span className="relative z-10 text-white font-semibold block mb-2 group-hover:text-violet-200 transition-colors duration-500">Polarizing Hook Generator</span>
-              <p className="relative z-10 text-gray-400 group-hover:text-gray-200 text-sm">Kick off with lines engineered to divide the room and keep the comment section raging.</p>
-            </div>
+          <div className="max-w-4xl mx-auto p-8 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl text-left">
+            <p className="text-gray-300 mb-6">Ready to stoke the flames and dominate the conversation? These extras weaponize outrage and hook your viewers for good.</p>
+            <ul className="list-disc list-inside space-y-2 text-gray-400">
+              <li><strong>Outrage Engine</strong> — Turn mild disputes into headline-grabbing feuds that keep your brand trending.</li>
+              <li><strong>Narrative Hijacker</strong> — Seize any hot topic and twist it to spotlight your message before the buzz fades.</li>
+              <li><strong>Addiction Loop Builder</strong> — Pace your content with irresistible tension and release so audiences keep coming back for more.</li>
+            </ul>
           </div>
         </section>
 
