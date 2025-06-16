@@ -111,22 +111,22 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
 
         <section className="w-full py-12 border-t border-gray-800">
           <h3 className="text-3xl font-bold mb-8 text-center">What Our Users Say</h3>
-          <div className="flex gap-4 overflow-x-auto pb-2 sm:grid sm:grid-cols-3 sm:gap-6 sm:overflow-visible max-w-5xl mx-auto text-left snap-x sm:snap-none">
-            <div className="relative shrink-0 snap-start sm:snap-none p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group w-72 sm:w-auto">
+          <div className="grid gap-4 sm:grid-cols-3 sm:gap-6 max-w-5xl mx-auto text-left">
+            <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-cyan-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <QuoteIcon className="relative z-10 w-6 h-6 mb-2 text-white/80" />
               <p className="relative z-10 text-gray-300 group-hover:text-gray-200 italic text-sm mb-3">&quot;This tool supercharged our marketing videos. Nothing else compares!&quot;</p>
               <span className="relative z-10 text-white font-semibold group-hover:text-cyan-200">— Alex R.</span>
             </div>
-            <div className="relative shrink-0 snap-start sm:snap-none p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group w-72 sm:w-auto">
+            <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-cyan-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <QuoteIcon className="relative z-10 w-6 h-6 mb-2 text-white/80" />
               <p className="relative z-10 text-gray-300 group-hover:text-gray-200 italic text-sm mb-3">&quot;CineSynth lets us pump out engaging content in minutes instead of hours.&quot;</p>
               <span className="relative z-10 text-white font-semibold group-hover:text-cyan-200">— Samira L.</span>
             </div>
-            <div className="relative shrink-0 snap-start sm:snap-none p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group w-72 sm:w-auto">
+            <div className="relative p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl overflow-hidden group">
               <div className="absolute -top-5 -right-5 w-24 h-24 bg-cyan-500/40 rounded-full blur-2xl opacity-0 group-hover:opacity-60 transition-opacity duration-500" />
               <div className="absolute inset-0 bg-gradient-to-br from-cyan-500/10 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500" />
               <QuoteIcon className="relative z-10 w-6 h-6 mb-2 text-white/80" />
