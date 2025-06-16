@@ -325,7 +325,7 @@ const App: React.FC = () => {
 
 
   return (
-    <div className="min-h-screen bg-black text-white flex flex-col items-center p-4 sm:p-6 lg:p-8 mx-auto">
+    <div className="min-h-screen text-white flex flex-col items-center p-4 sm:p-6 lg:p-8 mx-auto">
       <header className="mb-6 sm:mb-8 text-center w-full max-w-6xl">
         <div className="flex items-center justify-center space-x-3">
            <SparklesIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
@@ -362,7 +362,7 @@ const App: React.FC = () => {
               : 'lg:col-span-2'
           } lg:sticky lg:top-8 space-y-6`}
         >
-          <div className="p-4 sm:p-6 bg-neutral-800/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg">
+          <div className="p-4 sm:p-6 bg-neutral-800/70 backdrop-blur-md border border-neutral-600 rounded-xl shadow-xl">
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-white" style={{ fontFamily: 'Fira Code' }}>1. Enter Your Narration</h2>
             <TextInputArea
               value={narrationText}
@@ -371,7 +371,7 @@ const App: React.FC = () => {
               disabled={isGeneratingScenes || apiKeyMissing || isRenderingVideo}
             />
           </div>
-          <div className="p-4 sm:p-6 bg-neutral-800/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg">
+          <div className="p-4 sm:p-6 bg-neutral-800/70 backdrop-blur-md border border-neutral-600 rounded-xl shadow-xl">
              <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-white" style={{ fontFamily: 'Fira Code' }}>2. Configure & Generate</h2>
             <Controls
               aspectRatio={aspectRatio}
@@ -398,7 +398,7 @@ const App: React.FC = () => {
         </div>
 
         {(scenes.length > 0 || isGeneratingScenes || isRenderingVideo) && (
-          <div className="lg:col-span-2 p-1 sm:p-3 bg-neutral-800/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg">
+          <div className="lg:col-span-2 p-1 sm:p-3 bg-neutral-800/70 backdrop-blur-md border border-neutral-600 rounded-xl shadow-xl">
              <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4 text-white px-3 py-2" style={{ fontFamily: 'Fira Code' }}>3. Preview Your Video</h2>
             <VideoPreview
               scenes={scenes}

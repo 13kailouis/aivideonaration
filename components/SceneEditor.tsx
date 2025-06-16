@@ -56,12 +56,12 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
 
 
   return (
-    <div className="p-4 sm:p-6 bg-neutral-800/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg">
+    <div className="p-4 sm:p-6 bg-neutral-800/70 backdrop-blur-md border border-neutral-600 rounded-xl shadow-xl">
       <h3 className="text-xl sm:text-2xl font-semibold mb-4 text-white" style={{ fontFamily: 'Fira Code' }}>4. Edit Scenes</h3>
       {scenes.length === 0 && <p className="text-gray-400">No scenes generated yet. Use Step 1 & 2.</p>}
       <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
         {scenes.map((scene, index) => (
-          <div key={scene.id} className="bg-neutral-800/80 backdrop-blur-lg border border-neutral-700 p-4 rounded-lg shadow-lg">
+          <div key={scene.id} className="bg-neutral-800/70 backdrop-blur-md border border-neutral-600 p-4 rounded-lg shadow-lg">
             <h4 className="font-semibold text-white mb-2" style={{ fontFamily: 'Fira Code' }}>Scene {index + 1}</h4>
             {editableSceneId === scene.id ? (
               <div className="space-y-3">
