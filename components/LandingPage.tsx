@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SparklesIcon, MenuIcon, CloseIcon, TrendingUpIcon, ScissorsIcon, FireIcon, QuoteIcon } from './IconComponents.tsx';
+import MobileBottomBar from './MobileBottomBar.tsx';
 import TypewriterText from './TypewriterText.tsx';
 import FadeInSection from './FadeInSection.tsx';
 
@@ -169,6 +170,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
       <footer className="p-4 text-center text-gray-500 text-sm">
         <p>&copy; {new Date().getFullYear()} CineSynth. AI that disrupts filmmaking.</p>
       </footer>
+      <MobileBottomBar onGetStarted={onGetStarted} />
     </div>
   );
 };
