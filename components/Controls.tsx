@@ -119,7 +119,7 @@ const Controls: React.FC<ControlsProps> = ({
         {isGenerating ? 'Generating Video...' : (hasScenes ? 'Re-Generate Video from Narration' : 'Generate Video')}
       </button>
        {!ttsSupported && (
-         <p className="text-xs text-gray-500 text-center mt-2">TTS narration not supported by your browser.</p>
+         <p className="text-xs text-gray-500 text-center mt-2">TTS requires a configured API key.</p>
        )}
        {apiKeyMissing && (
          <p className="text-xs text-red-400 text-center mt-2">AI features disabled: API Key missing.</p>
