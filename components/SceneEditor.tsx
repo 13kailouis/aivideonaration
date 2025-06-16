@@ -56,12 +56,12 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
 
 
   return (
-    <div className="p-4 sm:p-6 bg-black/60 backdrop-blur-lg border border-gray-700 rounded-xl shadow-lg">
+    <div className="p-4 sm:p-6 bg-neutral-900/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg">
       <h3 className="text-xl sm:text-2xl font-semibold mb-4 text-white" style={{ fontFamily: 'Fira Code' }}>4. Edit Scenes</h3>
       {scenes.length === 0 && <p className="text-gray-400">No scenes generated yet. Use Step 1 & 2.</p>}
       <div className="space-y-4 max-h-[60vh] overflow-y-auto pr-2">
         {scenes.map((scene, index) => (
-          <div key={scene.id} className="bg-black/60 backdrop-blur-lg border border-gray-700 p-4 rounded-lg shadow-lg">
+          <div key={scene.id} className="bg-neutral-900/80 backdrop-blur-lg border border-neutral-700 p-4 rounded-lg shadow-lg">
             <h4 className="font-semibold text-white mb-2" style={{ fontFamily: 'Fira Code' }}>Scene {index + 1}</h4>
             {editableSceneId === scene.id ? (
               <div className="space-y-3">
@@ -72,7 +72,7 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
                     value={editText}
                     onChange={(e) => setEditText(e.target.value)}
                     rows={3}
-                    className="w-full p-2 bg-gray-900 border border-gray-700 rounded-md text-gray-200 focus:ring-white focus:border-white"
+                    className="w-full p-2 bg-neutral-900 border border-neutral-700 rounded-md text-gray-200 focus:ring-white focus:border-white"
                     disabled={isGenerating}
                   />
                 </div>
@@ -84,7 +84,7 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
                     value={editDuration}
                     onChange={(e) => setEditDuration(Math.max(1, parseInt(e.target.value, 10) || 1))}
                     min="1"
-                    className="w-full p-2 bg-gray-900 border border-gray-700 rounded-md text-gray-200 focus:ring-white focus:border-white"
+                    className="w-full p-2 bg-neutral-900 border border-neutral-700 rounded-md text-gray-200 focus:ring-white focus:border-white"
                     disabled={isGenerating}
                   />
                 </div>
