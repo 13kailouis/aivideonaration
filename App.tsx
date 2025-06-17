@@ -20,7 +20,12 @@ const premiumUser = IS_PREMIUM_USER;
 const App: React.FC = () => {
   const [narrationText, setNarrationText] = useState<string>('');
   const [scenes, setScenes] = useState<Scene[]>([]);
-  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(DEFAULT_ASPECT_RATIO);
+  const [aspectRatio, setAspectRatio] = useState<AspectRatio>(() => {
+    if (typeof window !== 'undefined') {
+      return window.innerWidth < window.innerHeight ? '9:16' : DEFAULT_ASPECT_RATIO;
+    }
+    return DEFAULT_ASPECT_RATIO;
+  });
   const [isGeneratingScenes, setIsGeneratingScenes] = useState<boolean>(false);
   const [isRenderingVideo, setIsRenderingVideo] = useState<boolean>(false);
   const [error, setError] = useState<string | null>(null);
