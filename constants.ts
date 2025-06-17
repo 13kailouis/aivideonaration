@@ -19,6 +19,7 @@ export const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
 // Optional URL where the main app is hosted. If set, the landing page
 // will redirect here when users click "Get Started".
 export const LAUNCH_URL = process.env.LAUNCH_URL;
+export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
 
 // Premium features
 export const IS_PREMIUM_USER = process.env.IS_PREMIUM_USER === 'true';

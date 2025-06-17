@@ -21,6 +21,7 @@ interface ControlsProps {
   onUseAiVideoChange: (use: boolean) => void;
   apiKeyMissing: boolean; // Added to disable generate button
   isPremiumUser: boolean;
+  generationLimitReached?: boolean;
 }
 
 const Controls: React.FC<ControlsProps> = ({
@@ -41,8 +42,9 @@ const Controls: React.FC<ControlsProps> = ({
   onUseAiVideoChange,
   apiKeyMissing,
   isPremiumUser,
+  generationLimitReached = false,
 }) => {
-  const canGenerate = !isGenerating && narrationText.trim() !== '' && !apiKeyMissing;
+  const canGenerate = !isGenerating && narrationText.trim() !== '' && !apiKeyMissing && !generationLimitReached;
 
   return (
     <div className="p-4 bg-neutral-900 border border-neutral-700 rounded-lg shadow-lg space-y-6">
@@ -141,10 +143,13 @@ const Controls: React.FC<ControlsProps> = ({
         <SparklesIcon className={`w-5 h-5 mr-2 ${isGenerating ? 'animate-spin' : ''}`} />
         {isGenerating ? 'Generating Video...' : (hasScenes ? 'Re-Generate Video from Narration' : 'Generate Video')}
       </button>
-       {!ttsSupported && (
-         <p className="text-xs text-gray-500 text-center mt-2">TTS narration not supported by your browser.</p>
-       )}
-       {apiKeyMissing && (
+      {generationLimitReached && (
+        <p className="text-xs text-red-400 text-center mt-2">Daily generation limit reached.</p>
+      )}
+      {!ttsSupported && (
+        <p className="text-xs text-gray-500 text-center mt-2">TTS narration not supported by your browser.</p>
+      )}
+      {apiKeyMissing && (
          <p className="text-xs text-red-400 text-center mt-2">AI features disabled: API Key missing.</p>
        )}
     </div>
