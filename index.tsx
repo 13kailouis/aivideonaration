@@ -3,6 +3,7 @@ import ReactDOM from 'react-dom/client';
 import App from './App.tsx';
 import LandingPage from './components/LandingPage.tsx';
 import { LAUNCH_URL } from './constants.ts';
+import { AuthProvider } from './auth/AuthContext.tsx';
 
 const Root: React.FC = () => {
   const [started, setStarted] = useState(false);
@@ -26,6 +27,8 @@ if (!rootElement) {
 const root = ReactDOM.createRoot(rootElement);
 root.render(
   <React.StrictMode>
-    <Root />
+    <AuthProvider>
+      <Root />
+    </AuthProvider>
   </React.StrictMode>
 );
