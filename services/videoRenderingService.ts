@@ -1,13 +1,13 @@
 
 import { Scene, AspectRatio, KenBurnsConfig } from '../types.ts';
+import { WATERMARK_TEXT } from '../constants.ts';
 
 const VIDEO_FPS = 20; // Frames per second for the output video
 const MAX_VIDEO_WIDTH_LANDSCAPE = 1280;
 const MAX_VIDEO_HEIGHT_PORTRAIT = 1280;
 
-const FONT_SIZE_HEIGHT_PERCENT = 0.035; 
-const SUBTITLE_PADDING_HEIGHT_PERCENT = 0.015; 
-const SUBTITLE_LINE_HEIGHT_MULTIPLIER = 1.2;
+// watermark text size relative to canvas height
+const WATERMARK_FONT_HEIGHT_PERCENT = 0.03;
 
 const IMAGE_LOAD_RETRIES = 2; // Reduced for faster failure if needed
 const INITIAL_RETRY_DELAY_MS = 300;
@@ -15,7 +15,7 @@ const SUGGESTED_VIDEO_BITRATE = 2500000; // 2.5 Mbps
 const MEDIA_RECORDER_TIMESLICE_MS = 100; // Get data every 100ms
 
 interface VideoRenderOptions {
-  includeSubtitles: boolean;
+  includeWatermark: boolean;
 }
 
 interface PreloadedImage {
@@ -112,41 +112,13 @@ function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: num
   });
 }
 
-function drawSubtitles(ctx: CanvasRenderingContext2D, text: string, canvasWidth: number, canvasHeight: number) {
-  const actualFontSize = Math.round(canvasHeight * FONT_SIZE_HEIGHT_PERCENT);
-  const actualPadding = Math.round(canvasHeight * SUBTITLE_PADDING_HEIGHT_PERCENT);
 
-  ctx.font = `bold ${actualFontSize}px Arial`;
-  ctx.textAlign = 'center';
-
-  const lineHeight = actualFontSize * SUBTITLE_LINE_HEIGHT_MULTIPLIER;
-  const maxWidth = canvasWidth - (actualPadding * 2);
-
-  const tempWords = text.split(' ');
-  let tempLine = '';
-  const numLinesArray: string[] = [];
-   for (let n = 0; n < tempWords.length; n++) {
-    const tempTestLine = tempLine + tempWords[n] + ' ';
-    if (ctx.measureText(tempTestLine).width > maxWidth && n > 0) {
-      numLinesArray.push(tempLine.trim());
-      tempLine = tempWords[n] + ' ';
-    } else {
-      tempLine = tempTestLine;
-    }
-  }
-  numLinesArray.push(tempLine.trim());
-  const textBlockHeight = numLinesArray.length * lineHeight;
-
-  const subtitleBgHeight = textBlockHeight + actualPadding; 
-  const subtitleBgY = canvasHeight - subtitleBgHeight - actualPadding; 
-
-  ctx.fillStyle = 'rgba(0, 0, 0, 0.7)'; 
-  ctx.fillRect(actualPadding / 2, subtitleBgY, canvasWidth - actualPadding, subtitleBgHeight);
-
-  ctx.fillStyle = 'white';
-  const textY = subtitleBgY + (subtitleBgHeight - textBlockHeight) / 2 + actualFontSize - (lineHeight - actualFontSize) / (SUBTITLE_LINE_HEIGHT_MULTIPLIER > 1 ? 2:1) ;
-
-  wrapText(ctx, text, canvasWidth / 2, textY, maxWidth, lineHeight);
+function drawWatermark(ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number, text: string) {
+  const fontSize = Math.round(canvasHeight * WATERMARK_FONT_HEIGHT_PERCENT);
+  ctx.font = `bold ${fontSize}px Arial`;
+  ctx.fillStyle = 'rgba(255,255,255,0.7)';
+  ctx.textAlign = 'right';
+  ctx.fillText(text, canvasWidth - 10, canvasHeight - 10);
 }
 
 async function loadImageWithRetries(src: string, sceneId: string, sceneIndexForLog: number): Promise<HTMLImageElement> {
@@ -370,8 +342,8 @@ export const generateWebMFromScenes = (
 
             try {
                 drawImageWithKenBurns(ctx, img, canvasWidth, canvasHeight, progressInThisScene, scene.kenBurnsConfig);
-                if (options.includeSubtitles && scene.sceneText) {
-                    drawSubtitles(ctx, scene.sceneText, canvasWidth, canvasHeight);
+                if (options.includeWatermark) {
+                    drawWatermark(ctx, canvasWidth, canvasHeight, WATERMARK_TEXT);
                 }
             } catch (drawError) {
                 console.error(`[Video Rendering Service] Error during drawing frame ${currentFrameInScene + 1} for scene ${currentSceneIndex+1}:`, drawError);

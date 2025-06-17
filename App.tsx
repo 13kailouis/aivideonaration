@@ -7,12 +7,15 @@ import VideoPreview from './components/VideoPreview.tsx';
 import ProgressBar from './components/ProgressBar.tsx';
 import SceneEditor from './components/SceneEditor.tsx'; // New Component
 import { Scene, AspectRatio, GeminiSceneResponseItem } from './types.ts';
-import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY } from './constants.ts';
+import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY, IS_PREMIUM_USER } from './constants.ts';
 import { analyzeNarrationWithGemini, generateImageWithImagen } from './services/geminiService.ts';
 import { processNarrationToScenes, fetchPlaceholderFootageUrl } from './services/videoService.ts';
 import { generateWebMFromScenes } from './services/videoRenderingService.ts';
 import { convertWebMToMP4 } from './services/mp4ConversionService.ts';
+import { generateAIVideo } from './services/aiVideoGenerationService.ts';
 import { SparklesIcon } from './components/IconComponents.tsx';
+
+const premiumUser = IS_PREMIUM_USER;
 
 const App: React.FC = () => {
   const [narrationText, setNarrationText] = useState<string>('');
@@ -25,10 +28,11 @@ const App: React.FC = () => {
   const [progressMessage, setProgressMessage] = useState<string>('');
   const [progressValue, setProgressValue] = useState<number>(0); 
   const [apiKeyMissing, setApiKeyMissing] = useState<boolean>(false);
-  const [includeSubtitlesOnDownload, setIncludeSubtitlesOnDownload] = useState<boolean>(true);
+  const [includeWatermark, setIncludeWatermark] = useState<boolean>(false);
   const [useAiImages, setUseAiImages] = useState<boolean>(false);
+  const [useAiVideo, setUseAiVideo] = useState<boolean>(false);
 
-  const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(true);
+  const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(premiumUser);
   const [ttsPlaybackStatus, setTTSPlaybackStatus] = useState<'idle' | 'playing' | 'paused' | 'ended'>('idle');
   const currentSpeechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const analysisCacheRef = useRef<GeminiSceneResponseItem[] | null>(null);
@@ -119,6 +123,35 @@ const App: React.FC = () => {
        return;
     }
 
+    if (useAiVideo) {
+      setIsRenderingVideo(true);
+      setError(null);
+      setProgressMessage('Generating AI video...');
+      setProgressValue(0);
+      try {
+        const aiBlob = await generateAIVideo(narrationText);
+        const url = URL.createObjectURL(aiBlob);
+        const a = document.createElement('a');
+        a.href = url;
+        a.download = `cinesynth_ai_${Date.now()}.mp4`;
+        document.body.appendChild(a);
+        a.click();
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+        setProgressMessage('AI video downloaded!');
+        setProgressValue(100);
+      } catch (err) {
+        const msg = err instanceof Error ? err.message : 'Failed to generate AI video.';
+        setError(msg);
+        setProgressMessage('Error generating AI video.');
+        setProgressValue(0);
+      } finally {
+        setIsRenderingVideo(false);
+        setTimeout(() => { setProgressMessage(''); setProgressValue(0); }, 3000);
+      }
+      return;
+    }
+
     setIsGeneratingScenes(true);
     setError(null);
     setWarnings([]); // Clear previous warnings
@@ -162,7 +195,7 @@ const App: React.FC = () => {
     } finally {
       setIsGeneratingScenes(false);
     }
-  }, [narrationText, aspectRatio, apiKeyMissing, useAiImages, handleSceneGenerationProgress]);
+  }, [narrationText, aspectRatio, apiKeyMissing, useAiImages, useAiVideo, handleSceneGenerationProgress]);
 
   const handleDownloadVideo = async () => {
     if (scenes.length === 0 || isRenderingVideo) {
@@ -188,7 +221,7 @@ const App: React.FC = () => {
       const webmBlob = await generateWebMFromScenes(
         scenes,
         aspectRatio,
-        { includeSubtitles: includeSubtitlesOnDownload },
+        { includeWatermark: includeWatermark },
         (p) => {
           setProgressValue(Math.round(p * 100));
           if (p < 0.01) {
@@ -365,7 +398,7 @@ const App: React.FC = () => {
       <div className="w-full max-w-5xl space-y-6">
         <div className={`grid grid-cols-1 ${gridColsClass} gap-6 sm:gap-8 transition-all`}>
         <div className="space-y-6">
-          <div className="p-4 sm:p-6 bg-neutral-900/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg">
+          <div className="p-4 sm:p-6 bg-neutral-800/70 backdrop-blur-lg border border-neutral-600 rounded-2xl shadow-lg">
             <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-white" style={{ fontFamily: 'Fira Code' }}>1. Enter Your Narration</h2>
             <TextInputArea
               value={narrationText}
@@ -374,7 +407,7 @@ const App: React.FC = () => {
               disabled={isGeneratingScenes || apiKeyMissing || isRenderingVideo}
             />
           </div>
-          <div className="p-4 sm:p-6 bg-neutral-900/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg">
+          <div className="p-4 sm:p-6 bg-neutral-800/70 backdrop-blur-lg border border-neutral-600 rounded-2xl shadow-lg">
              <h2 className="text-xl sm:text-2xl font-semibold mb-4 text-white" style={{ fontFamily: 'Fira Code' }}>2. Configure & Generate</h2>
             <Controls
               aspectRatio={aspectRatio}
@@ -388,20 +421,23 @@ const App: React.FC = () => {
               isGenerating={isGeneratingScenes || isRenderingVideo} 
               hasScenes={scenes.length > 0}
               narrationText={narrationText}
-              includeSubtitlesOnDownload={includeSubtitlesOnDownload}
-              onIncludeSubtitlesChange={setIncludeSubtitlesOnDownload}
+              includeWatermark={includeWatermark}
+              onIncludeWatermarkChange={setIncludeWatermark}
               isTTSEnabled={isTTSEnabled}
               onTTSEnabledChange={toggleTTSEnabled}
               ttsSupported={typeof window.speechSynthesis !== 'undefined'}
               useAiImages={useAiImages}
               onUseAiImagesChange={setUseAiImages}
+              useAiVideo={useAiVideo}
+              onUseAiVideoChange={setUseAiVideo}
               apiKeyMissing={apiKeyMissing}
+              isPremiumUser={premiumUser}
             />
           </div>
         </div>
 
         {previewMounted && (
-        <div className={`p-1 sm:p-2 bg-neutral-900/80 backdrop-blur-lg border border-neutral-700 rounded-xl shadow-lg transition-opacity duration-500 ${showPreview ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
+        <div className={`p-1 sm:p-2 bg-neutral-800/70 backdrop-blur-lg border border-neutral-600 rounded-2xl shadow-lg transition-opacity duration-500 ${showPreview ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
            <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4 text-white px-3 py-2" style={{ fontFamily: 'Fira Code' }}>3. Preview Your Video</h2>
           <VideoPreview
             scenes={scenes}
