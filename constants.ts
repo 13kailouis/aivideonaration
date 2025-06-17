@@ -23,3 +23,4 @@ export const LAUNCH_URL = process.env.LAUNCH_URL;
 // Premium features
 export const IS_PREMIUM_USER = process.env.IS_PREMIUM_USER === 'true';
 export const WATERMARK_TEXT = 'CineSynth';
+export const GOOGLE_CLIENT_ID = process.env.GOOGLE_CLIENT_ID;
