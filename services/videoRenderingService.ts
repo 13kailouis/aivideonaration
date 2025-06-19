@@ -1,5 +1,5 @@
 
-import { Scene, AspectRatio, KenBurnsConfig } from '../types.ts';
+import { Scene, AspectRatio, KenBurnsConfig, FootageType } from '../types.ts';
 import { WATERMARK_TEXT } from '../constants.ts';
 
 const VIDEO_FPS = 20; // Frames per second for the output video
@@ -18,9 +18,10 @@ interface VideoRenderOptions {
   includeWatermark: boolean;
 }
 
-interface PreloadedImage {
+interface PreloadedFootage {
   sceneId: string;
-  image: HTMLImageElement;
+  element: HTMLImageElement | HTMLVideoElement;
+  type: FootageType;
 }
 
 const FALLBACK_BASE64_IMAGE =
@@ -121,9 +122,22 @@ function drawWatermark(ctx: CanvasRenderingContext2D, canvasWidth: number, canva
   ctx.fillText(text, canvasWidth - 10, canvasHeight - 10);
 }
 
-async function loadImageWithRetries(src: string, sceneId: string, sceneIndexForLog: number): Promise<HTMLImageElement> {
+async function loadFootageWithRetries(src: string, sceneId: string, sceneIndexForLog: number, type: FootageType): Promise<HTMLImageElement | HTMLVideoElement> {
   for (let attempt = 0; attempt <= IMAGE_LOAD_RETRIES; attempt++) {
     try {
+      if (type === 'video') {
+        const video = document.createElement('video');
+        if (!src.startsWith('data:')) {
+          video.crossOrigin = 'anonymous';
+        }
+        video.src = src;
+        video.muted = true;
+        await new Promise((resolve, reject) => {
+          video.onloadeddata = () => resolve(null);
+          video.onerror = () => reject(new Error('Failed to load video'));
+        });
+        return video;
+      }
       const image = await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
         if (!src.startsWith('data:')) {
@@ -148,13 +162,26 @@ async function loadImageWithRetries(src: string, sceneId: string, sceneIndexForL
         const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
         await new Promise(res => setTimeout(res, delay));
       } else {
-        console.error(`All ${IMAGE_LOAD_RETRIES + 1} attempts to load image for scene ${sceneIndexForLog + 1} failed. Using fallback image.`);
-        const fallbackImg = new Image();
-        fallbackImg.src = FALLBACK_BASE64_IMAGE;
-        await new Promise(res => { fallbackImg.onload = () => res(null); });
-        return fallbackImg;
+        console.error(`All ${IMAGE_LOAD_RETRIES + 1} attempts to load footage for scene ${sceneIndexForLog + 1} failed. Using fallback.`);
+        if (type === 'video') {
+          const vid = document.createElement('video');
+          vid.src = src;
+          await new Promise(res => { vid.onloadeddata = () => res(null); });
+          return vid;
+        } else {
+          const fallbackImg = new Image();
+          fallbackImg.src = FALLBACK_BASE64_IMAGE;
+          await new Promise(res => { fallbackImg.onload = () => res(null); });
+          return fallbackImg;
+        }
       }
     }
+  }
+  if (type === 'video') {
+    const vid = document.createElement('video');
+    vid.src = src;
+    await new Promise(res => { vid.onloadeddata = () => res(null); });
+    return vid;
   }
   const fallbackImg = new Image();
   fallbackImg.src = FALLBACK_BASE64_IMAGE;
@@ -162,12 +189,12 @@ async function loadImageWithRetries(src: string, sceneId: string, sceneIndexForL
   return fallbackImg;
 }
 
-async function preloadAllImages(
+async function preloadAllFootage(
     scenes: Scene[],
     onProgress: (message: string, value: number) => void
-): Promise<PreloadedImage[]> {
-    onProgress("Preloading images...", 0);
-    const results: PreloadedImage[] = [];
+): Promise<PreloadedFootage[]> {
+    onProgress("Preloading footage...", 0);
+    const results: PreloadedFootage[] = [];
     const concurrency = 3;
     let index = 0;
     let completed = 0;
@@ -176,15 +203,15 @@ async function preloadAllImages(
         while (index < scenes.length) {
             const i = index++;
             const scene = scenes[i];
-            const img = await loadImageWithRetries(scene.footageUrl, scene.id, i);
-            results.push({ sceneId: scene.id, image: img });
+            const element = await loadFootageWithRetries(scene.footageUrl, scene.id, i, scene.footageType);
+            results.push({ sceneId: scene.id, element, type: scene.footageType });
             completed++;
-            onProgress(`Preloading images... (${completed}/${scenes.length})`, completed / scenes.length);
+            onProgress(`Preloading footage... (${completed}/${scenes.length})`, completed / scenes.length);
         }
     }
 
     await Promise.all(Array(Math.min(concurrency, scenes.length)).fill(0).map(worker));
-    onProgress("All images preloaded.", 1);
+    onProgress("All footage preloaded.", 1);
     return results;
 }
 
@@ -219,7 +246,7 @@ export const generateWebMFromScenes = (
 
     const recordedChunks: BlobPart[] = [];
     let mediaRecorder: MediaRecorder | null = null;
-    let preloadedImages: PreloadedImage[] = [];
+    let preloadedFootage: PreloadedFootage[] = [];
     let animationFrameId: number | null = null;
 
     const updateOverallProgress = (stageProgress: number, stageWeight: number, baseProgress: number) => {
@@ -229,8 +256,8 @@ export const generateWebMFromScenes = (
     };
 
     try {
-        // Stage 1: Preload images (0% - 20% of progress)
-        preloadedImages = await preloadAllImages(scenes, (_msg, val) => {
+        // Stage 1: Preload footage (0% - 20% of progress)
+        preloadedFootage = await preloadAllFootage(scenes, (_msg, val) => {
             // console.log(`[Preload Progress] ${_msg} - ${val}`); // Optional detailed logging
             updateOverallProgress(val, 0.2, 0);
         });
@@ -327,21 +354,28 @@ export const generateWebMFromScenes = (
             }
 
             const scene = scenes[currentSceneIndex];
-            const preloadedImgData = preloadedImages.find(pi => pi.sceneId === scene.id);
+            const preloadedData = preloadedFootage.find(pi => pi.sceneId === scene.id);
             
-            if (!preloadedImgData) {
-                console.error(`[Video Rendering Service] Preloaded image not found for scene ID: ${scene.id}`);
+            if (!preloadedData) {
+                console.error(`[Video Rendering Service] Preloaded footage not found for scene ID: ${scene.id}`);
                 if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); else if (stream.getTracks) stream.getTracks().forEach(track => track.stop());
                 reject(new Error(`Internal error: Preloaded image missing for scene ${scene.id}`));
                 return;
             }
-            
-            const img = preloadedImgData.image;
+
+            const element = preloadedData.element;
+            if (preloadedData.type === 'video') {
+                (element as HTMLVideoElement).play();
+            }
             const numFramesForThisScene = Math.round(scene.duration * VIDEO_FPS);
             const progressInThisScene = numFramesForThisScene <= 1 ? 1 : currentFrameInScene / (numFramesForThisScene -1);
 
             try {
-                drawImageWithKenBurns(ctx, img, canvasWidth, canvasHeight, progressInThisScene, scene.kenBurnsConfig);
+                if (preloadedData.type === 'video') {
+                    ctx.drawImage(element as HTMLVideoElement, 0, 0, canvasWidth, canvasHeight);
+                } else {
+                    drawImageWithKenBurns(ctx, element as HTMLImageElement, canvasWidth, canvasHeight, progressInThisScene, scene.kenBurnsConfig!);
+                }
                 if (options.includeWatermark) {
                     drawWatermark(ctx, canvasWidth, canvasHeight, WATERMARK_TEXT);
                 }
