@@ -29,7 +29,7 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
   const [editableSceneId, setEditableSceneId] = useState<string | null>(null);
   const [editText, setEditText] = useState<string>('');
   const [editDuration, setEditDuration] = useState<number>(0);
-  const [isUpdatingImage, setIsUpdatingImage] = useState<string | null>(null); // Store ID of scene whose image is updating
+  const [isUpdatingImage, setIsUpdatingImage] = useState<string | null>(null); // Store ID of scene whose footage is updating
 
   const handleEdit = (scene: Scene) => {
     setEditableSceneId(scene.id);
@@ -42,7 +42,7 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
     setEditableSceneId(null);
   };
 
-  const handleImageUpdate = async (sceneId: string) => {
+  const handleFootageUpdate = async (sceneId: string) => {
     setIsUpdatingImage(sceneId);
     try {
       await onUpdateSceneImage(sceneId);
@@ -112,12 +112,12 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
                 </p>
                 <p className="text-gray-300 text-sm"><strong className="text-gray-400">Duration:</strong> {scene.duration}s</p>
                 <p className="text-gray-300 text-sm truncate">
-                    <strong className="text-gray-400">Image:</strong> {
-                        scene.footageUrl.startsWith('data:image') ? 
-                        (useAiImagesGlobal ? 'AI Generated' : 'Custom Image Data') : 
-                        'Placeholder'
+                    <strong className="text-gray-400">Footage:</strong> {
+                        scene.footageType === 'image' ?
+                        (useAiImagesGlobal ? 'AI Generated' : 'Custom Image Data') :
+                        'Placeholder Video'
                     }
-                    {scene.footageUrl.startsWith('data:image') && scene.imagePrompt && 
+                    {scene.footageType === 'image' && scene.imagePrompt &&
                      <span className="text-xs text-gray-500 italic ml-1">(Prompt: {scene.imagePrompt.substring(0,30)}...)</span>
                     }
                 </p>
@@ -130,7 +130,7 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
                     Edit Scene
                   </button>
                   <button
-                    onClick={() => handleImageUpdate(scene.id)}
+                    onClick={() => handleFootageUpdate(scene.id)}
                     disabled={isGenerating || apiKeyMissing || isUpdatingImage === scene.id}
                     className="px-3 py-1.5 text-xs bg-white hover:bg-gray-200 rounded-md text-black disabled:opacity-50 flex items-center"
                     title={apiKeyMissing && useAiImagesGlobal ? "API Key missing, cannot generate AI image" : (useAiImagesGlobal ? "Refresh AI Image" : "Refresh Placeholder")}

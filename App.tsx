@@ -9,7 +9,7 @@ import SceneEditor from './components/SceneEditor.tsx'; // New Component
 import { Scene, AspectRatio, GeminiSceneResponseItem } from './types.ts';
 import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY, IS_PREMIUM_USER } from './constants.ts';
 import { analyzeNarrationWithGemini, generateImageWithImagen } from './services/geminiService.ts';
-import { processNarrationToScenes, fetchPlaceholderFootageUrl } from './services/videoService.ts';
+import { processNarrationToScenes, fetchPlaceholderVideoUrl } from './services/videoService.ts';
 import { generateWebMFromScenes } from './services/videoRenderingService.ts';
 import { convertWebMToMP4 } from './services/mp4ConversionService.ts';
 import { generateAIVideo } from './services/aiVideoGenerationService.ts';
@@ -312,7 +312,7 @@ const App: React.FC = () => {
 
   const handleAddScene = async () => {
     const newSceneId = `scene-new-${Date.now()}`;
-    const placeholder = await fetchPlaceholderFootageUrl(["new scene", "abstract"], aspectRatio, newSceneId);
+    const placeholder = await fetchPlaceholderVideoUrl(["new scene", "abstract"], aspectRatio, newSceneId);
     const newScene: Scene = {
       id: newSceneId,
       sceneText: "New scene text...",
@@ -320,13 +320,14 @@ const App: React.FC = () => {
       imagePrompt: "Abstract background for a new scene",
       duration: 5,
       footageUrl: placeholder,
+      footageType: 'video',
       kenBurnsConfig: { targetScale: 1.1, targetXPercent: 0, targetYPercent: 0, originXRatio: 0.5, originYRatio: 0.5, animationDurationS: 5 }
     };
     setScenes(prevScenes => [...prevScenes, newScene]);
     if (ttsPlaybackStatus !== 'idle') handleTTSStop();
   };
 
-  const handleUpdateSceneImage = async (sceneId: string) => {
+  const handleUpdateSceneFootage = async (sceneId: string) => {
     const sceneToUpdate = scenes.find(s => s.id === sceneId);
     if (!sceneToUpdate) return;
 
@@ -345,16 +346,16 @@ const App: React.FC = () => {
                 newFootageUrl = result.base64Image;
             } else {
                 addWarning(result.userFriendlyError || `AI image failed for scene ${sceneId}. Using new placeholder.`);
-                newFootageUrl = await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-retry");
+            newFootageUrl = await fetchPlaceholderVideoUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-retry");
                 errorOccurred = true;
             }
         } else {
             setProgressValue(30);
-            newFootageUrl = await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-refresh");
+            newFootageUrl = await fetchPlaceholderVideoUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-refresh");
         }
         
         setScenes(prevScenes => prevScenes.map(s =>
-            s.id === sceneId ? { ...s, footageUrl: newFootageUrl } : s
+            s.id === sceneId ? { ...s, footageUrl: newFootageUrl, footageType: 'video' } : s
         ));
         setProgressMessage(errorOccurred ? 'Image updated with placeholder.' : 'Image updated successfully!');
         setProgressValue(100);
@@ -463,7 +464,7 @@ const App: React.FC = () => {
                 onUpdateScene={handleUpdateScene}
                 onDeleteScene={handleDeleteScene}
                 onAddScene={handleAddScene}
-                onUpdateSceneImage={handleUpdateSceneImage}
+                onUpdateSceneImage={handleUpdateSceneFootage}
                 aspectRatio={aspectRatio}
                 isGenerating={isGeneratingScenes || isRenderingVideo}
                 apiKeyMissing={apiKeyMissing}
