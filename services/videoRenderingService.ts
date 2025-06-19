@@ -18,13 +18,12 @@ interface VideoRenderOptions {
   includeWatermark: boolean;
 }
 
-interface PreloadedImage {
+interface PreloadedVideo {
   sceneId: string;
-  image: HTMLImageElement;
+  video: HTMLVideoElement;
 }
 
-const FALLBACK_BASE64_IMAGE =
-  'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO9z9zsAAAAASUVORK5CYII='; // 1x1 gray pixel
+const FALLBACK_BASE64_IMAGE = '';
 
 function getCanvasDimensions(aspectRatio: AspectRatio): { width: number; height: number } {
   if (aspectRatio === '16:9') {
@@ -38,55 +37,16 @@ function getCanvasDimensions(aspectRatio: AspectRatio): { width: number; height:
   }
 }
 
-function drawImageWithKenBurns(
+function drawVideoFrame(
   ctx: CanvasRenderingContext2D,
-  img: HTMLImageElement,
+  video: HTMLVideoElement,
   canvasWidth: number,
   canvasHeight: number,
-  progressInScene: number, // 0 to 1
-  kbConfig: KenBurnsConfig
+  _progressInScene: number,
+  _kb: KenBurnsConfig
 ) {
   ctx.clearRect(0, 0, canvasWidth, canvasHeight);
-  ctx.fillStyle = 'black';
-  ctx.fillRect(0, 0, canvasWidth, canvasHeight);
-
-  const initialScale = 1.0;
-  const initialXPercent = 0;
-  const initialYPercent = 0;
-
-  const currentScale = initialScale + (kbConfig.targetScale - initialScale) * progressInScene;
-  const currentXPercent = initialXPercent + (kbConfig.targetXPercent - initialXPercent) * progressInScene;
-  const currentYPercent = initialYPercent + (kbConfig.targetYPercent - initialYPercent) * progressInScene;
-
-  const currentXTranslatePx = (canvasWidth * currentXPercent) / 100;
-  const currentYTranslatePx = (canvasHeight * currentYPercent) / 100;
-
-  ctx.save();
-
-  const originPxX = canvasWidth * kbConfig.originXRatio;
-  const originPxY = canvasHeight * kbConfig.originYRatio;
-  ctx.translate(originPxX, originPxY);
-  ctx.scale(currentScale, currentScale);
-  ctx.translate(-originPxX, -originPxY);
-  ctx.translate(currentXTranslatePx, currentYTranslatePx);
-
-  let dx, dy, dw, dh;
-  const imgNaturalAspect = img.naturalWidth / img.naturalHeight;
-  const canvasViewAspect = canvasWidth / canvasHeight;
-
-  if (imgNaturalAspect > canvasViewAspect) {
-      dh = canvasHeight;
-      dw = dh * imgNaturalAspect;
-      dx = (canvasWidth - dw) / 2;
-      dy = 0;
-  } else {
-      dw = canvasWidth;
-      dh = dw / imgNaturalAspect;
-      dx = 0;
-      dy = (canvasHeight - dh) / 2;
-  }
-  ctx.drawImage(img, dx, dy, dw, dh);
-  ctx.restore();
+  ctx.drawImage(video, 0, 0, canvasWidth, canvasHeight);
 }
 
 
@@ -121,53 +81,34 @@ function drawWatermark(ctx: CanvasRenderingContext2D, canvasWidth: number, canva
   ctx.fillText(text, canvasWidth - 10, canvasHeight - 10);
 }
 
-async function loadImageWithRetries(src: string, sceneId: string, sceneIndexForLog: number): Promise<HTMLImageElement> {
+async function loadVideoWithRetries(src: string, sceneId: string, sceneIndexForLog: number): Promise<HTMLVideoElement> {
   for (let attempt = 0; attempt <= IMAGE_LOAD_RETRIES; attempt++) {
     try {
-      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
-        const img = new Image();
-        if (!src.startsWith('data:')) {
-            img.crossOrigin = "anonymous";
-        }
-        img.onload = () => resolve(img);
-        img.onerror = (eventOrMessage) => {
-          let errorMessage = `Failed to load image for scene ${sceneIndexForLog + 1} (ID: ${sceneId}, URL: ${src.substring(0,100)}...), attempt ${attempt + 1}/${IMAGE_LOAD_RETRIES + 1}.`;
-            if (typeof eventOrMessage === 'string') {
-                errorMessage += ` Details: ${eventOrMessage}`;
-            } else if (eventOrMessage && (eventOrMessage as Event).type) {
-                errorMessage += ` Event type: ${(eventOrMessage as Event).type}.`;
-            }
-          reject(new Error(errorMessage));
-        };
-        img.src = src;
-      });
-      return image;
+      const video = document.createElement('video');
+      video.crossOrigin = 'anonymous';
+      video.src = src;
+      await video.play().catch(() => {});
+      video.pause();
+      return video;
     } catch (error) {
-      console.warn(`Image load attempt ${attempt + 1} failed for scene ${sceneIndexForLog + 1}. Error: ${(error as Error).message}`);
+      console.warn(`Video load attempt ${attempt + 1} failed for scene ${sceneIndexForLog + 1}.`, error);
       if (attempt < IMAGE_LOAD_RETRIES) {
         const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
         await new Promise(res => setTimeout(res, delay));
-      } else {
-        console.error(`All ${IMAGE_LOAD_RETRIES + 1} attempts to load image for scene ${sceneIndexForLog + 1} failed. Using fallback image.`);
-        const fallbackImg = new Image();
-        fallbackImg.src = FALLBACK_BASE64_IMAGE;
-        await new Promise(res => { fallbackImg.onload = () => res(null); });
-        return fallbackImg;
       }
     }
   }
-  const fallbackImg = new Image();
-  fallbackImg.src = FALLBACK_BASE64_IMAGE;
-  await new Promise(res => { fallbackImg.onload = () => res(null); });
-  return fallbackImg;
+  const v = document.createElement('video');
+  v.src = src;
+  return v;
 }
 
-async function preloadAllImages(
+async function preloadAllVideos(
     scenes: Scene[],
     onProgress: (message: string, value: number) => void
-): Promise<PreloadedImage[]> {
-    onProgress("Preloading images...", 0);
-    const results: PreloadedImage[] = [];
+): Promise<PreloadedVideo[]> {
+    onProgress("Preloading videos...", 0);
+    const results: PreloadedVideo[] = [];
     const concurrency = 3;
     let index = 0;
     let completed = 0;
@@ -176,15 +117,15 @@ async function preloadAllImages(
         while (index < scenes.length) {
             const i = index++;
             const scene = scenes[i];
-            const img = await loadImageWithRetries(scene.footageUrl, scene.id, i);
-            results.push({ sceneId: scene.id, image: img });
+            const vid = await loadVideoWithRetries(scene.footageUrl, scene.id, i);
+            results.push({ sceneId: scene.id, video: vid });
             completed++;
             onProgress(`Preloading images... (${completed}/${scenes.length})`, completed / scenes.length);
         }
     }
 
     await Promise.all(Array(Math.min(concurrency, scenes.length)).fill(0).map(worker));
-    onProgress("All images preloaded.", 1);
+    onProgress("All videos preloaded.", 1);
     return results;
 }
 
@@ -219,7 +160,7 @@ export const generateWebMFromScenes = (
 
     const recordedChunks: BlobPart[] = [];
     let mediaRecorder: MediaRecorder | null = null;
-    let preloadedImages: PreloadedImage[] = [];
+    let preloadedVideos: PreloadedVideo[] = [];
     let animationFrameId: number | null = null;
 
     const updateOverallProgress = (stageProgress: number, stageWeight: number, baseProgress: number) => {
@@ -229,8 +170,8 @@ export const generateWebMFromScenes = (
     };
 
     try {
-        // Stage 1: Preload images (0% - 20% of progress)
-        preloadedImages = await preloadAllImages(scenes, (_msg, val) => {
+        // Stage 1: Preload videos (0% - 20% of progress)
+        preloadedVideos = await preloadAllVideos(scenes, (_msg, val) => {
             // console.log(`[Preload Progress] ${_msg} - ${val}`); // Optional detailed logging
             updateOverallProgress(val, 0.2, 0);
         });
@@ -327,21 +268,22 @@ export const generateWebMFromScenes = (
             }
 
             const scene = scenes[currentSceneIndex];
-            const preloadedImgData = preloadedImages.find(pi => pi.sceneId === scene.id);
+            const preloadedVidData = preloadedVideos.find(pi => pi.sceneId === scene.id);
             
-            if (!preloadedImgData) {
-                console.error(`[Video Rendering Service] Preloaded image not found for scene ID: ${scene.id}`);
+            if (!preloadedVidData) {
+                console.error(`[Video Rendering Service] Preloaded video not found for scene ID: ${scene.id}`);
                 if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); else if (stream.getTracks) stream.getTracks().forEach(track => track.stop());
-                reject(new Error(`Internal error: Preloaded image missing for scene ${scene.id}`));
+                reject(new Error(`Internal error: Preloaded video missing for scene ${scene.id}`));
                 return;
             }
-            
-            const img = preloadedImgData.image;
+
+            const video = preloadedVidData.video;
             const numFramesForThisScene = Math.round(scene.duration * VIDEO_FPS);
             const progressInThisScene = numFramesForThisScene <= 1 ? 1 : currentFrameInScene / (numFramesForThisScene -1);
 
             try {
-                drawImageWithKenBurns(ctx, img, canvasWidth, canvasHeight, progressInThisScene, scene.kenBurnsConfig);
+                video.currentTime = progressInThisScene * (video.duration || scene.duration);
+                drawVideoFrame(ctx, video, canvasWidth, canvasHeight, progressInThisScene, scene.kenBurnsConfig);
                 if (options.includeWatermark) {
                     drawWatermark(ctx, canvasWidth, canvasHeight, WATERMARK_TEXT);
                 }
