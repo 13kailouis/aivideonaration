@@ -18,9 +18,12 @@ interface VideoRenderOptions {
   includeWatermark: boolean;
 }
 
-interface PreloadedImage {
+interface PreloadedMedia {
   sceneId: string;
-  image: HTMLImageElement;
+  type: 'image' | 'video';
+  image?: HTMLImageElement;
+  video?: HTMLVideoElement;
+  duration: number;
 }
 
 const FALLBACK_BASE64_IMAGE =
@@ -162,12 +165,41 @@ async function loadImageWithRetries(src: string, sceneId: string, sceneIndexForL
   return fallbackImg;
 }
 
-async function preloadAllImages(
+async function loadVideoWithRetries(src: string, sceneId: string, sceneIndexForLog: number): Promise<HTMLVideoElement> {
+  for (let attempt = 0; attempt <= IMAGE_LOAD_RETRIES; attempt++) {
+    try {
+      const video = document.createElement('video');
+      if (!src.startsWith('data:')) {
+        video.crossOrigin = 'anonymous';
+      }
+      video.preload = 'auto';
+      video.src = src;
+      await new Promise<void>((resolve, reject) => {
+        video.onloadeddata = () => resolve();
+        video.onerror = (e) => {
+          reject(new Error(`Failed to load video for scene ${sceneIndexForLog + 1} (ID: ${sceneId}).`));
+        };
+      });
+      return video;
+    } catch (error) {
+      console.warn(`Video load attempt ${attempt + 1} failed for scene ${sceneIndexForLog + 1}.`, error);
+      if (attempt < IMAGE_LOAD_RETRIES) {
+        const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
+        await new Promise(res => setTimeout(res, delay));
+      } else {
+        throw error;
+      }
+    }
+  }
+  throw new Error('Failed to load video');
+}
+
+async function preloadAllMedia(
     scenes: Scene[],
     onProgress: (message: string, value: number) => void
-): Promise<PreloadedImage[]> {
-    onProgress("Preloading images...", 0);
-    const results: PreloadedImage[] = [];
+): Promise<PreloadedMedia[]> {
+    onProgress("Preloading media...", 0);
+    const results: PreloadedMedia[] = [];
     const concurrency = 3;
     let index = 0;
     let completed = 0;
@@ -176,15 +208,20 @@ async function preloadAllImages(
         while (index < scenes.length) {
             const i = index++;
             const scene = scenes[i];
-            const img = await loadImageWithRetries(scene.footageUrl, scene.id, i);
-            results.push({ sceneId: scene.id, image: img });
+            if (scene.footageType === 'video') {
+                const vid = await loadVideoWithRetries(scene.footageUrl, scene.id, i);
+                results.push({ sceneId: scene.id, type: 'video', video: vid, duration: vid.duration || scene.duration });
+            } else {
+                const img = await loadImageWithRetries(scene.footageUrl, scene.id, i);
+                results.push({ sceneId: scene.id, type: 'image', image: img, duration: scene.duration });
+            }
             completed++;
-            onProgress(`Preloading images... (${completed}/${scenes.length})`, completed / scenes.length);
+            onProgress(`Preloading media... (${completed}/${scenes.length})`, completed / scenes.length);
         }
     }
 
     await Promise.all(Array(Math.min(concurrency, scenes.length)).fill(0).map(worker));
-    onProgress("All images preloaded.", 1);
+    onProgress("All media preloaded.", 1);
     return results;
 }
 
@@ -219,7 +256,7 @@ export const generateWebMFromScenes = (
 
     const recordedChunks: BlobPart[] = [];
     let mediaRecorder: MediaRecorder | null = null;
-    let preloadedImages: PreloadedImage[] = [];
+    let preloadedMediaList: PreloadedMedia[] = [];
     let animationFrameId: number | null = null;
 
     const updateOverallProgress = (stageProgress: number, stageWeight: number, baseProgress: number) => {
@@ -229,8 +266,8 @@ export const generateWebMFromScenes = (
     };
 
     try {
-        // Stage 1: Preload images (0% - 20% of progress)
-        preloadedImages = await preloadAllImages(scenes, (_msg, val) => {
+        // Stage 1: Preload media (0% - 20% of progress)
+        preloadedMediaList = await preloadAllMedia(scenes, (_msg, val) => {
             // console.log(`[Preload Progress] ${_msg} - ${val}`); // Optional detailed logging
             updateOverallProgress(val, 0.2, 0);
         });
@@ -327,21 +364,26 @@ export const generateWebMFromScenes = (
             }
 
             const scene = scenes[currentSceneIndex];
-            const preloadedImgData = preloadedImages.find(pi => pi.sceneId === scene.id);
-            
-            if (!preloadedImgData) {
-                console.error(`[Video Rendering Service] Preloaded image not found for scene ID: ${scene.id}`);
+            const preloaded = preloadedMediaList.find(pi => pi.sceneId === scene.id);
+
+            if (!preloaded) {
+                console.error(`[Video Rendering Service] Preloaded media not found for scene ID: ${scene.id}`);
                 if (mediaRecorder && mediaRecorder.state === "recording") mediaRecorder.stop(); else if (stream.getTracks) stream.getTracks().forEach(track => track.stop());
-                reject(new Error(`Internal error: Preloaded image missing for scene ${scene.id}`));
+                reject(new Error(`Internal error: Preloaded media missing for scene ${scene.id}`));
                 return;
             }
-            
-            const img = preloadedImgData.image;
+
             const numFramesForThisScene = Math.round(scene.duration * VIDEO_FPS);
             const progressInThisScene = numFramesForThisScene <= 1 ? 1 : currentFrameInScene / (numFramesForThisScene -1);
 
             try {
-                drawImageWithKenBurns(ctx, img, canvasWidth, canvasHeight, progressInThisScene, scene.kenBurnsConfig);
+                if (preloaded.type === 'video' && preloaded.video) {
+                    const vid = preloaded.video;
+                    vid.currentTime = Math.min(preloaded.duration, progressInThisScene * preloaded.duration);
+                    ctx.drawImage(vid, 0, 0, canvasWidth, canvasHeight);
+                } else if (preloaded.image) {
+                    drawImageWithKenBurns(ctx, preloaded.image, canvasWidth, canvasHeight, progressInThisScene, scene.kenBurnsConfig);
+                }
                 if (options.includeWatermark) {
                     drawWatermark(ctx, canvasWidth, canvasHeight, WATERMARK_TEXT);
                 }
