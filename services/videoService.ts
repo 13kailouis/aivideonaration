@@ -75,6 +75,43 @@ const fetchWikimediaVideo = async (
   }
 };
 
+// Helper to fetch video from Coverr if API key is provided
+const fetchCoverrVideo = async (
+  query: string,
+  orientation: 'landscape' | 'portrait',
+  duration?: number
+): Promise<string | null> => {
+  const apiKey = process.env.COVERR_API_KEY;
+  if (!apiKey) return null;
+  try {
+    const searchUrl =
+      `https://api.coverr.co/search/videos?query=${encodeURIComponent(query)}&api_key=${apiKey}`;
+    const resp = await fetch(searchUrl);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    let videos: any[] = data?.videos || data;
+    if (!Array.isArray(videos) || videos.length === 0) return null;
+    videos = videos.filter(v => {
+      if (typeof v.is_vertical === 'boolean') {
+        return orientation === 'landscape' ? !v.is_vertical : v.is_vertical;
+      }
+      return true;
+    });
+    if (duration && videos[0] && videos[0].duration) {
+      videos.sort((a, b) => Math.abs((a.duration || 0) - duration) - Math.abs((b.duration || 0) - duration));
+    }
+    const candidates = videos.slice(0, 5);
+    const choice = candidates[Math.floor(Math.random() * candidates.length)];
+    const fileResp = await fetch(`https://api.coverr.co/storage/videos/${encodeURIComponent(choice.base_filename)}?api_key=${apiKey}`);
+    if (!fileResp.ok) return null;
+    const urlData = await fileResp.json();
+    return typeof urlData === 'string' ? urlData : urlData.url;
+  } catch (err) {
+    console.warn('Error fetching from Coverr API:', err);
+    return null;
+  }
+};
+
 // Fetches a placeholder image or video URL based on keywords.
 export const fetchPlaceholderFootageUrl = async (
   keywords: string[],
@@ -92,6 +129,12 @@ export const fetchPlaceholderFootageUrl = async (
   const orientation = aspectRatio === '16:9' ? 'landscape' : 'portrait';
 
   const offset = sceneId ? hashString(sceneId) % 20 : Math.floor(Math.random() * 20);
+  // Try Coverr first if API key is available
+  const coverrVideo = await fetchCoverrVideo(query, orientation, duration);
+  if (coverrVideo) {
+    return { url: coverrVideo, type: 'video' };
+  }
+
   const wikiVideo = await fetchWikimediaVideo(query, orientation, duration, offset);
   if (wikiVideo) {
     return { url: wikiVideo, type: 'video' };
