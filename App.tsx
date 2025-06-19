@@ -1,6 +1,6 @@
 
 // Timestamp: 2024-09-12T10:00:00Z - Refresh
-import React, { useState, useCallback, useEffect, useRef } from 'react';
+import React, { useState, useCallback, useEffect, useRef, useContext } from 'react';
 import TextInputArea from './components/TextInputArea.tsx';
 import Controls from './components/Controls.tsx';
 import VideoPreview from './components/VideoPreview.tsx';
@@ -8,6 +8,8 @@ import ProgressBar from './components/ProgressBar.tsx';
 import SceneEditor from './components/SceneEditor.tsx'; // New Component
 import { Scene, AspectRatio, GeminiSceneResponseItem } from './types.ts';
 import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY, IS_PREMIUM_USER } from './constants.ts';
+import { AuthContext } from './contexts/AuthContext.tsx';
+import { incrementUsage, remainingQuota } from './services/usageLimitService.ts';
 import { analyzeNarrationWithGemini, generateImageWithImagen } from './services/geminiService.ts';
 import { processNarrationToScenes, fetchPlaceholderFootageUrl } from './services/videoService.ts';
 import { generateWebMFromScenes } from './services/videoRenderingService.ts';
@@ -18,6 +20,9 @@ import { SparklesIcon } from './components/IconComponents.tsx';
 const premiumUser = IS_PREMIUM_USER;
 
 const App: React.FC = () => {
+  const { user } = useContext(AuthContext);
+  const dailyLimit = user ? 5 : 2;
+  const [remaining, setRemaining] = useState<number>(remainingQuota(dailyLimit));
   const [narrationText, setNarrationText] = useState<string>('');
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(DEFAULT_ASPECT_RATIO);
@@ -36,6 +41,10 @@ const App: React.FC = () => {
   const [ttsPlaybackStatus, setTTSPlaybackStatus] = useState<'idle' | 'playing' | 'paused' | 'ended'>('idle');
   const currentSpeechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const analysisCacheRef = useRef<GeminiSceneResponseItem[] | null>(null);
+
+  useEffect(() => {
+    setRemaining(remainingQuota(dailyLimit));
+  }, [dailyLimit]);
 
   const showPreview = scenes.length > 0 || isGeneratingScenes || isRenderingVideo;
   const [previewMounted, setPreviewMounted] = useState(showPreview);
@@ -114,6 +123,10 @@ const App: React.FC = () => {
 
 
   const handleGenerateVideo = useCallback(async () => {
+    if (remainingQuota(dailyLimit) <= 0) {
+      setError(`Daily video limit reached (${dailyLimit} per day).`);
+      return;
+    }
     if (!narrationText.trim()) {
       setError("Please enter some narration text.");
       return;
@@ -140,6 +153,8 @@ const App: React.FC = () => {
         URL.revokeObjectURL(url);
         setProgressMessage('AI video downloaded!');
         setProgressValue(100);
+        incrementUsage();
+        setRemaining(remainingQuota(dailyLimit));
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed to generate AI video.';
         setError(msg);
@@ -201,6 +216,10 @@ const App: React.FC = () => {
     if (scenes.length === 0 || isRenderingVideo) {
       return;
     }
+    if (remainingQuota(dailyLimit) <= 0) {
+      setError(`Daily video limit reached (${dailyLimit} per day).`);
+      return;
+    }
     setIsRenderingVideo(true);
     setError(null);
     setWarnings([]);
@@ -256,6 +275,8 @@ const App: React.FC = () => {
       URL.revokeObjectURL(url);
       setProgressMessage('Video downloaded!');
       setProgressValue(100);
+      incrementUsage();
+      setRemaining(remainingQuota(dailyLimit));
 
       setTimeout(() => {
           setProgressMessage('');
@@ -439,6 +460,7 @@ const App: React.FC = () => {
               apiKeyMissing={apiKeyMissing}
               isPremiumUser={premiumUser}
             />
+            <p className="text-xs text-gray-400 mt-2">Remaining renders today: {remaining}/{dailyLimit}</p>
           </div>
         </div>
 
