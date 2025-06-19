@@ -226,8 +226,8 @@ const App: React.FC = () => {
           setProgressValue(Math.round(p * 100));
           if (p < 0.01) {
              setProgressMessage('Initializing video rendering...');
-          } else if (p <= 0.20) { 
-            setProgressMessage(`Preloading images: ${Math.round(p * 100 / 0.20)}%`);
+          } else if (p <= 0.20) {
+            setProgressMessage(`Preloading footage: ${Math.round(p * 100 / 0.20)}%`);
           } else if (p < 1) { 
             const frameRenderingProgress = (p - 0.20) / 0.79;
             setProgressMessage(`Rendering video: ${Math.round(frameRenderingProgress * 100)}%`);
