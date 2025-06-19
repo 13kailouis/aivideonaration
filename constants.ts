@@ -22,3 +22,4 @@ export const LAUNCH_URL = process.env.LAUNCH_URL;
 // Premium features
 export const IS_PREMIUM_USER = process.env.IS_PREMIUM_USER === 'true';
 export const WATERMARK_TEXT = 'CineSynth';
+export const COVERR_API_KEY = process.env.COVERR_API_KEY;

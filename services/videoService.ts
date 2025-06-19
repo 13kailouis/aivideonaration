@@ -1,6 +1,6 @@
 // Timestamp: 2024-09-12T10:00:00Z - Refresh
 import { Scene, GeminiSceneResponseItem, KenBurnsConfig, AspectRatio } from '../types.ts';
-import { FALLBACK_FOOTAGE_KEYWORDS, AVERAGE_WORDS_PER_SECOND } from '../constants.ts';
+import { FALLBACK_FOOTAGE_KEYWORDS, AVERAGE_WORDS_PER_SECOND, COVERR_API_KEY } from '../constants.ts';
 import { generateImageWithImagen } from './geminiService.ts';
 
 // Simple hash helper used to derive deterministic offsets for placeholder
@@ -75,6 +75,71 @@ const fetchWikimediaVideo = async (
   }
 };
 
+// Helper to fetch video from the Internet Archive
+const fetchArchiveVideo = async (
+  query: string,
+  duration?: number
+): Promise<string | null> => {
+  const searchUrl =
+    `https://archive.org/advancedsearch.php?q=${encodeURIComponent(
+      query + ' AND mediatype:movies'
+    )}&fl=identifier&rows=20&output=json`;
+  try {
+    const resp = await fetch(searchUrl);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const docs = data?.response?.docs;
+    if (!docs || docs.length === 0) return null;
+    const choice = docs[Math.floor(Math.random() * docs.length)].identifier;
+    const metaResp = await fetch(`https://archive.org/metadata/${choice}`);
+    if (!metaResp.ok) return null;
+    const meta = await metaResp.json();
+    const files = meta?.files || [];
+    const file = files.find((f: any) =>
+      typeof f.name === 'string' && f.name.toLowerCase().endsWith('.mp4')
+    );
+    if (!file) return null;
+    // Use cors.archive.org to avoid CORS errors when loading the video
+    return `https://cors.archive.org/download/${choice}/${file.name}`;
+  } catch (err) {
+    console.warn('Error fetching from Internet Archive:', err);
+    return null;
+  }
+};
+
+// Helper to fetch video from Coverr
+const fetchCoverrVideo = async (
+  query: string,
+  orientation: 'landscape' | 'portrait',
+  duration?: number
+): Promise<string | null> => {
+  if (!COVERR_API_KEY) return null;
+  const apiUrl =
+    `https://api.coverr.co/videos?query=${encodeURIComponent(query)}` +
+    `&orientation=${orientation === 'landscape' ? 'horizontal' : 'vertical'}` +
+    (duration ? `&duration_max=${duration}` : '') +
+    `&limit=25&api_key=${COVERR_API_KEY}`;
+  try {
+    const resp = await fetch(apiUrl);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const vids = data?.videos || data?.items;
+    if (!Array.isArray(vids) || vids.length === 0) return null;
+    const choice = vids[Math.floor(Math.random() * Math.min(5, vids.length))];
+    const base = choice.base_filename || choice.baseFilename;
+    if (!base) return null;
+    const urlResp = await fetch(
+      `https://api.coverr.co/storage/videos/${base}?api_key=${COVERR_API_KEY}`
+    );
+    if (!urlResp.ok) return null;
+    const url = await urlResp.text();
+    return url.trim();
+  } catch (err) {
+    console.warn('Error fetching from Coverr API:', err);
+    return null;
+  }
+};
+
 // Fetches a placeholder image or video URL based on keywords.
 export const fetchPlaceholderFootageUrl = async (
   keywords: string[],
@@ -92,12 +157,26 @@ export const fetchPlaceholderFootageUrl = async (
   const orientation = aspectRatio === '16:9' ? 'landscape' : 'portrait';
 
   const offset = sceneId ? hashString(sceneId) % 20 : Math.floor(Math.random() * 20);
+
+  // Try Coverr first if API key provided
+  const coverrVideo = await fetchCoverrVideo(query, orientation, duration);
+  if (coverrVideo) {
+    return { url: coverrVideo, type: 'video' };
+  }
+
+  // Then try Wikimedia Commons
   const wikiVideo = await fetchWikimediaVideo(query, orientation, duration, offset);
   if (wikiVideo) {
     return { url: wikiVideo, type: 'video' };
   }
 
-  // If no result for the specific query, attempt a generic stock search
+  // Finally try Internet Archive
+  const iaVideo = await fetchArchiveVideo(query, duration);
+  if (iaVideo) {
+    return { url: iaVideo, type: 'video' };
+  }
+
+  // Last resort generic stock search
   const fallback = await fetchWikimediaVideo('stock footage', orientation, duration, offset);
   return { url: fallback || '', type: 'video' };
 };
