@@ -11,6 +11,7 @@ CineSynth transforms text scripts into marketing-ready videos in minutes. Powere
 - Premium: AI‑generated imagery and TTS narration
 - Premium: One-click AI video generation
 - Browser-based WebM to MP4 conversion via ffmpeg.wasm
+- Placeholder footage is pulled as videos directly from Wikimedia Commons
 
 ## Getting Started
 
@@ -18,7 +19,7 @@ CineSynth transforms text scripts into marketing-ready videos in minutes. Powere
    ```bash
    npm install
    ```
-2. Create a `.env.local` file and set `GEMINI_API_KEY`. Placeholder footage now comes from Wikimedia Commons, so no additional API keys are required. If the landing page should redirect to another domain when starting the app, set `LAUNCH_URL` to that URL.
+2. Create a `.env.local` file and set `GEMINI_API_KEY`. Placeholder footage now comes from Wikimedia Commons and is provided as video only, so no additional API keys are required. If the landing page should redirect to another domain when starting the app, set `LAUNCH_URL` to that URL.
 3. Start the development server
    ```bash
    npm run dev

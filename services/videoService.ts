@@ -68,7 +68,7 @@ export const fetchPlaceholderFootageUrl = async (
   duration?: number,
   sceneId?: string // Optional sceneId for more unique placeholders if needed
 ): Promise<{ url: string; type: 'video' | 'image' }> => {
-  const width = aspectRatio === '16:9' ? 960 : 540; // smaller for faster downloads
+  const width = aspectRatio === '16:9' ? 960 : 540; // used if fallback search needs orientation hints
   const height = aspectRatio === '16:9' ? 540 : 960;
 
   const query = (keywords && keywords.length > 0)
@@ -82,8 +82,9 @@ export const fetchPlaceholderFootageUrl = async (
     return { url: wikiVideo, type: 'video' };
   }
 
-  const encodedQuery = encodeURIComponent(query);
-  return { url: `https://loremflickr.com/${width}/${height}/${encodedQuery}?lock=${sceneId || Date.now()}`, type: 'image' };
+  // If no result for the specific query, attempt a generic stock search
+  const fallback = await fetchWikimediaVideo('stock footage', orientation, duration);
+  return { url: fallback || '', type: 'video' };
 };
 
 export interface ProcessNarrationOptions {
