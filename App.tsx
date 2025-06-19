@@ -17,7 +17,9 @@ import { SparklesIcon } from './components/IconComponents.tsx';
 
 const premiumUser = IS_PREMIUM_USER;
 
-const App: React.FC = () => {
+interface AppProps { onBackToLanding?: () => void; }
+
+const App: React.FC<AppProps> = ({ onBackToLanding }) => {
   const [narrationText, setNarrationText] = useState<string>('');
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(DEFAULT_ASPECT_RATIO);
@@ -393,6 +395,14 @@ const App: React.FC = () => {
         <p className="mt-2 text-base sm:text-lg text-gray-400">
           Transform text into videos with AI-powered visuals and spoken narration.
         </p>
+        {onBackToLanding && (
+          <button
+            onClick={onBackToLanding}
+            className="mt-4 text-sm text-fuchsia-400 hover:underline"
+          >
+            Back to Landing Page
+          </button>
+        )}
       </header>
 
       {apiKeyMissing && (
