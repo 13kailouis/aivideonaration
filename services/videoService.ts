@@ -3,6 +3,18 @@ import { Scene, GeminiSceneResponseItem, KenBurnsConfig, AspectRatio } from '../
 import { FALLBACK_FOOTAGE_KEYWORDS, AVERAGE_WORDS_PER_SECOND } from '../constants.ts';
 import { generateImageWithImagen } from './geminiService.ts';
 
+// Simple hash helper used to derive deterministic offsets for placeholder
+// footage searches so different scenes are less likely to return
+// identical results from Wikimedia Commons.
+const hashString = (str: string): number => {
+  let hash = 0;
+  for (let i = 0; i < str.length; i++) {
+    hash = (hash << 5) - hash + str.charCodeAt(i);
+    hash |= 0; // Convert to 32bit integer
+  }
+  return Math.abs(hash);
+};
+
 // Helper to generate Ken Burns configuration for a scene
 const generateSceneKenBurnsConfig = (duration: number): KenBurnsConfig => {
     const endScale = 1.05 + Math.random() * 0.1; // Target scale: 1.05 to 1.15
@@ -27,12 +39,13 @@ const generateSceneKenBurnsConfig = (duration: number): KenBurnsConfig => {
 const fetchWikimediaVideo = async (
   query: string,
   orientation: 'landscape' | 'portrait',
-  duration?: number
+  duration?: number,
+  offset: number = 0
 ): Promise<string | null> => {
   const searchUrl =
     `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*` +
     `&generator=search&gsrsearch=${encodeURIComponent(query + ' filetype:video')}` +
-    `&gsrlimit=25&gsrnamespace=6&prop=imageinfo&iiprop=url|size|duration|mime`;
+    `&gsrlimit=25&gsroffset=${offset}&gsrnamespace=6&prop=imageinfo&iiprop=url|size|duration|mime`;
   try {
     const resp = await fetch(searchUrl);
     if (!resp.ok) return null;
@@ -78,13 +91,14 @@ export const fetchPlaceholderFootageUrl = async (
 
   const orientation = aspectRatio === '16:9' ? 'landscape' : 'portrait';
 
-  const wikiVideo = await fetchWikimediaVideo(query, orientation, duration);
+  const offset = sceneId ? hashString(sceneId) % 20 : Math.floor(Math.random() * 20);
+  const wikiVideo = await fetchWikimediaVideo(query, orientation, duration, offset);
   if (wikiVideo) {
     return { url: wikiVideo, type: 'video' };
   }
 
   // If no result for the specific query, attempt a generic stock search
-  const fallback = await fetchWikimediaVideo('stock footage', orientation, duration);
+  const fallback = await fetchWikimediaVideo('stock footage', orientation, duration, offset);
   return { url: fallback || '', type: 'video' };
 };
 
