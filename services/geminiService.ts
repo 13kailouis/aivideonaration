@@ -20,7 +20,10 @@ const IMAGEN_QUOTA_EXCEEDED_MESSAGE = "You've exceeded your Imagen API quota for
 const GENERIC_IMAGEN_ERROR_MESSAGE = "Failed to generate AI image due to an unexpected error or invalid prompt. Using placeholder image.";
 
 
-export const analyzeNarrationWithGemini = async (narrationText: string): Promise<GeminiSceneResponseItem[]> => {
+export const analyzeNarrationWithGemini = async (
+  narrationText: string,
+  retries: number = 2
+): Promise<GeminiSceneResponseItem[]> => {
   const genAI = getAI();
   const prompt = `
     You are an expert video scriptwriter. Your task is to process the following narration text and divide it into distinct scenes.
@@ -75,17 +78,35 @@ export const analyzeNarrationWithGemini = async (narrationText: string): Promise
   `;
 
   let geminiApiResponse: GenerateContentResponse | undefined;
+  for (let attempt = 0; attempt <= retries; attempt++) {
+    try {
+      geminiApiResponse = await genAI.models.generateContent({
+        model: GEMINI_TEXT_MODEL,
+        contents: prompt,
+        config: {
+          responseMimeType: "application/json",
+          temperature: 0.5,
+        }
+      });
+      break;
+    } catch (err) {
+      if (
+        attempt < retries &&
+        err instanceof Error &&
+        (err.message.includes("UNAVAILABLE") || err.message.includes("503"))
+      ) {
+        await new Promise(res => setTimeout(res, 1000 * (attempt + 1)));
+        continue;
+      }
+      throw err;
+    }
+  }
+
+  if (!geminiApiResponse) {
+    throw new Error("Failed to analyze narration. The AI service is unavailable.");
+  }
 
   try {
-    geminiApiResponse = await genAI.models.generateContent({
-      model: GEMINI_TEXT_MODEL,
-      contents: prompt,
-      config: {
-        responseMimeType: "application/json", 
-        temperature: 0.5, // Keep temperature moderate for structured output
-      }
-    });
-
     let jsonStr = geminiApiResponse?.text?.trim() || '';
     const fenceRegex = /^```(\w*)?\s*\n?(.*?)\n?\s*```$/s;
     const match = jsonStr.match(fenceRegex);

@@ -82,24 +82,34 @@ export const fetchPlaceholderFootageUrl = async (
   duration?: number,
   sceneId?: string // Optional sceneId for more unique placeholders if needed
 ): Promise<{ url: string; type: 'video' | 'image' }> => {
-  const width = aspectRatio === '16:9' ? 960 : 540; // used if fallback search needs orientation hints
+  const width = aspectRatio === '16:9' ? 960 : 540; // kept for potential future use
   const height = aspectRatio === '16:9' ? 540 : 960;
 
-  const query = (keywords && keywords.length > 0)
-    ? keywords.join(' ')
-    : FALLBACK_FOOTAGE_KEYWORDS[Math.floor(Math.random() * FALLBACK_FOOTAGE_KEYWORDS.length)];
-
   const orientation = aspectRatio === '16:9' ? 'landscape' : 'portrait';
+  const baseOffset = sceneId ? hashString(sceneId) % 20 : Math.floor(Math.random() * 20);
 
-  const offset = sceneId ? hashString(sceneId) % 20 : Math.floor(Math.random() * 20);
-  const wikiVideo = await fetchWikimediaVideo(query, orientation, duration, offset);
-  if (wikiVideo) {
-    return { url: wikiVideo, type: 'video' };
+  const queries: string[] = [];
+  if (keywords && keywords.length > 0) {
+    const joined = keywords.join(' ');
+    queries.push(joined);
+    for (const kw of keywords) {
+      if (!queries.includes(kw)) queries.push(kw);
+    }
+  } else {
+    queries.push(FALLBACK_FOOTAGE_KEYWORDS[Math.floor(Math.random() * FALLBACK_FOOTAGE_KEYWORDS.length)]);
+  }
+  queries.push('stock footage');
+
+  for (let i = 0; i < queries.length; i++) {
+    const query = queries[i];
+    const offset = (baseOffset + i) % 20;
+    const wikiVideo = await fetchWikimediaVideo(query, orientation, duration, offset);
+    if (wikiVideo) {
+      return { url: wikiVideo, type: 'video' };
+    }
   }
 
-  // If no result for the specific query, attempt a generic stock search
-  const fallback = await fetchWikimediaVideo('stock footage', orientation, duration, offset);
-  return { url: fallback || '', type: 'video' };
+  return { url: '', type: 'video' };
 };
 
 export interface ProcessNarrationOptions {
