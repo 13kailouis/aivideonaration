@@ -19,6 +19,8 @@ interface ControlsProps {
   onUseAiImagesChange: (use: boolean) => void;
   useAiVideo: boolean;
   onUseAiVideoChange: (use: boolean) => void;
+  useVideoPlaceholders: boolean;
+  onUseVideoPlaceholdersChange: (use: boolean) => void;
   apiKeyMissing: boolean; // Added to disable generate button
   isPremiumUser: boolean;
 }
@@ -39,6 +41,8 @@ const Controls: React.FC<ControlsProps> = ({
   onUseAiImagesChange,
   useAiVideo,
   onUseAiVideoChange,
+  useVideoPlaceholders,
+  onUseVideoPlaceholdersChange,
   apiKeyMissing,
   isPremiumUser,
 }) => {
@@ -81,6 +85,20 @@ const Controls: React.FC<ControlsProps> = ({
           />
           Use AI-Generated Images <span className="text-xs text-gray-400 ml-1">(Slower, uses more quota)</span>
           {!isPremiumUser && <span className="ml-1 text-xs text-yellow-400">(Premium)</span>}
+        </label>
+      </div>
+
+      <div>
+        <label htmlFor="useVideoPlaceholders" className="flex items-center text-sm font-medium text-gray-300 mb-1 cursor-pointer select-none">
+          <input
+            id="useVideoPlaceholders"
+            type="checkbox"
+            checked={useVideoPlaceholders}
+            onChange={(e) => onUseVideoPlaceholdersChange(e.target.checked)}
+            disabled={isGenerating}
+            className="h-4 w-4 text-white border-neutral-600 rounded focus:ring-white bg-neutral-800 mr-2 disabled:opacity-50"
+          />
+          Use Placeholder Videos
         </label>
       </div>
 

@@ -1,6 +1,6 @@
 // Timestamp: 2024-09-12T10:00:00Z - Refresh
 import { Scene, GeminiSceneResponseItem, KenBurnsConfig, AspectRatio } from '../types.ts';
-import { FALLBACK_FOOTAGE_KEYWORDS, AVERAGE_WORDS_PER_SECOND, PEXELS_API_KEY } from '../constants.ts';
+import { FALLBACK_FOOTAGE_KEYWORDS, AVERAGE_WORDS_PER_SECOND, PEXELS_API_KEY, USE_VIDEO_PLACEHOLDERS } from '../constants.ts';
 import { generateImageWithImagen } from './geminiService.ts';
 
 // Helper to generate Ken Burns configuration for a scene
@@ -65,9 +65,49 @@ export const fetchPlaceholderFootageUrl = async (
   return `https://loremflickr.com/${width}/${height}/${encodedQuery}?lock=${sceneId || Date.now()}`;
 };
 
+// Fetches a placeholder video URL based on keywords.
+export const fetchPlaceholderVideoUrl = async (
+  keywords: string[],
+  aspectRatio: AspectRatio,
+  sceneId?: string
+): Promise<string> => {
+  const query = (keywords && keywords.length > 0)
+    ? keywords.join(' ')
+    : FALLBACK_FOOTAGE_KEYWORDS[Math.floor(Math.random() * FALLBACK_FOOTAGE_KEYWORDS.length)];
+
+  const orientation = aspectRatio === '16:9' ? 'landscape' : 'portrait';
+
+  if (PEXELS_API_KEY) {
+    try {
+      const resp = await fetch(
+        `https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&orientation=${orientation}&per_page=20`,
+        { headers: { Authorization: PEXELS_API_KEY } }
+      );
+      if (resp.ok) {
+        const data = await resp.json();
+        if (data.videos && data.videos.length > 0) {
+          const video = data.videos[Math.floor(Math.random() * data.videos.length)];
+          const file = video.video_files && video.video_files.length > 0 ? video.video_files[0] : null;
+          if (file && file.link) {
+            return `${file.link}#${sceneId || Date.now()}`;
+          }
+        }
+      } else {
+        console.warn(`Pexels Video API request failed with ${resp.status}`);
+      }
+    } catch (err) {
+      console.warn('Error fetching from Pexels Video API:', err);
+    }
+  }
+
+  // Simple fallback sample video with CORS enabled
+  return 'https://interactive-examples.mdn.mozilla.net/media/cc0-videos/flower.mp4';
+};
+
 export interface ProcessNarrationOptions {
   useAiGeneratedImages: boolean;
   generateSpecificImageForSceneId?: string; // For updating a single scene's image
+  useVideoPlaceholders?: boolean;
 }
 
 export const processNarrationToScenes = async (
@@ -80,6 +120,7 @@ export const processNarrationToScenes = async (
   const scenes: Scene[] = existingScenes && !options.generateSpecificImageForSceneId ? [...existingScenes] : [];
   const totalScenes = narrationAnalysis.length;
   let scenesToProcess = narrationAnalysis;
+  const useVideoPlaceholders = options.useVideoPlaceholders ?? USE_VIDEO_PLACEHOLDERS;
 
   // If we are only updating a single image
   if (options.generateSpecificImageForSceneId && existingScenes) {
@@ -124,17 +165,21 @@ export const processNarrationToScenes = async (
         imageGenError = imagenResult.userFriendlyError || 'AI image generation failed. Using placeholder.';
         console.warn(imageGenError, "Prompt:", item.imagePrompt);
         onProgress(imageGenError, (index + 1) / scenesToProcess.length, 'ai_image', index + 1, scenesToProcess.length, imageGenError);
-        footageUrl = await fetchPlaceholderFootageUrl(item.keywords, aspectRatio, sceneId);
+        footageUrl = useVideoPlaceholders ?
+            await fetchPlaceholderVideoUrl(item.keywords, aspectRatio, sceneId) :
+            await fetchPlaceholderFootageUrl(item.keywords, aspectRatio, sceneId);
       }
     } else {
       onProgress(
-        `Fetching placeholder image for scene ${index + 1}/${scenesToProcess.length}...`,
+        `Fetching placeholder ${useVideoPlaceholders ? 'video' : 'image'} for scene ${index + 1}/${scenesToProcess.length}...`,
         (index + 1) / scenesToProcess.length,
         'placeholder_image',
         index + 1,
         scenesToProcess.length
       );
-      footageUrl = await fetchPlaceholderFootageUrl(item.keywords, aspectRatio, sceneId);
+      footageUrl = useVideoPlaceholders ?
+          await fetchPlaceholderVideoUrl(item.keywords, aspectRatio, sceneId) :
+          await fetchPlaceholderFootageUrl(item.keywords, aspectRatio, sceneId);
     }
     
     const kenBurnsConfig = generateSceneKenBurnsConfig(validatedDuration);
@@ -145,8 +190,9 @@ export const processNarrationToScenes = async (
             existingScenes[sceneToUpdateIndex].footageUrl = footageUrl;
             existingScenes[sceneToUpdateIndex].kenBurnsConfig = kenBurnsConfig; // Re-gen KB if image changes
             // Optionally update keywords/imagePrompt if they were also re-analyzed
-            existingScenes[sceneToUpdateIndex].imagePrompt = item.imagePrompt; 
+            existingScenes[sceneToUpdateIndex].imagePrompt = item.imagePrompt;
             existingScenes[sceneToUpdateIndex].keywords = item.keywords;
+            existingScenes[sceneToUpdateIndex].isVideo = useVideoPlaceholders ? true : undefined;
              // If duration was part of the single scene update, update it too
             if(item.duration) existingScenes[sceneToUpdateIndex].duration = validatedDuration;
 
@@ -157,13 +203,14 @@ export const processNarrationToScenes = async (
             return existingScenes; // Return modified existing scenes
         }
     } else {
-         scenes.push({
+        scenes.push({
           id: sceneId,
           sceneText: item.sceneText,
           keywords: item.keywords,
           imagePrompt: item.imagePrompt,
           duration: validatedDuration,
           footageUrl: footageUrl,
+          isVideo: useVideoPlaceholders ? true : undefined,
           kenBurnsConfig: kenBurnsConfig,
         });
     }
