@@ -8,6 +8,8 @@ import ProgressBar from './components/ProgressBar.tsx';
 import SceneEditor from './components/SceneEditor.tsx'; // New Component
 import { Scene, AspectRatio, GeminiSceneResponseItem } from './types.ts';
 import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY, IS_PREMIUM_USER } from './constants.ts';
+import LoginButton from './components/LoginButton.tsx';
+import { useAuth } from './auth/AuthContext.tsx';
 import { analyzeNarrationWithGemini, generateImageWithImagen } from './services/geminiService.ts';
 import { processNarrationToScenes, fetchPlaceholderFootageUrl } from './services/videoService.ts';
 import { generateWebMFromScenes } from './services/videoRenderingService.ts';
@@ -15,9 +17,10 @@ import { convertWebMToMP4 } from './services/mp4ConversionService.ts';
 import { generateAIVideo } from './services/aiVideoGenerationService.ts';
 import { SparklesIcon } from './components/IconComponents.tsx';
 
-const premiumUser = IS_PREMIUM_USER;
 
 const App: React.FC = () => {
+  const { isPremium } = useAuth();
+  const premiumUser = IS_PREMIUM_USER || isPremium;
   const [narrationText, setNarrationText] = useState<string>('');
   const [scenes, setScenes] = useState<Scene[]>([]);
   const [aspectRatio, setAspectRatio] = useState<AspectRatio>(DEFAULT_ASPECT_RATIO);
@@ -68,6 +71,12 @@ const App: React.FC = () => {
       }
     };
   }, []);
+
+  useEffect(() => {
+    if (!premiumUser) {
+      setIsTTSEnabled(false);
+    }
+  }, [premiumUser]);
 
   const addWarning = useCallback((message: string) => {
     setWarnings(prev => [...prev, message]);
@@ -379,7 +388,8 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center p-4 sm:p-6 lg:p-8">
-      <header className="mb-6 sm:mb-8 text-center">
+      <header className="mb-6 sm:mb-8 text-center relative">
+        <div className="absolute top-0 right-0"><LoginButton /></div>
         <div className="flex items-center justify-center space-x-3">
            <SparklesIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
            <h1

@@ -1,5 +1,6 @@
 import React, { useState } from 'react';
 import { SparklesIcon, MenuIcon, CloseIcon, TrendingUpIcon, ScissorsIcon, FireIcon, QuoteIcon } from './IconComponents.tsx';
+import LoginButton from './LoginButton.tsx';
 import TypewriterText from './TypewriterText.tsx';
 import FadeInSection from './FadeInSection.tsx';
 
@@ -22,6 +23,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
           </h1>
           <div className="hidden sm:flex items-center gap-6">
             <a href="#features" className="hover:text-gray-300 transition-colors">Features</a>
+            <LoginButton />
             <button
               className="bg-white text-black px-4 py-2 rounded-md shadow-lg hover:bg-gray-200"
               onClick={onGetStarted}
@@ -39,6 +41,7 @@ const LandingPage: React.FC<LandingPageProps> = ({ onGetStarted }) => {
         {menuOpen && (
           <div className="sm:hidden fixed inset-0 bg-black/90 backdrop-blur flex flex-col items-center justify-center space-y-6 z-50 min-h-screen">
             <a href="#features" className="text-2xl" onClick={() => setMenuOpen(false)}>Features</a>
+            <LoginButton />
             <button
               className="bg-white text-black px-6 py-3 rounded-md text-lg shadow-lg hover:bg-gray-200"
               onClick={() => { setMenuOpen(false); onGetStarted(); }}
