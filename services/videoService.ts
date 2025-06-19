@@ -46,15 +46,16 @@ const fetchWikimediaVideo = async (
       return orientation === 'landscape' ? info.width >= info.height : info.height >= info.width;
     });
     if (videos.length === 0) return null;
-    let best = videos[0];
     if (duration) {
-      best = videos.reduce((a, b) => {
+      videos.sort((a, b) => {
         const ad = Math.abs((a.imageinfo[0].duration || 0) - duration);
         const bd = Math.abs((b.imageinfo[0].duration || 0) - duration);
-        return bd < ad ? b : a;
-      }, best);
+        return ad - bd;
+      });
     }
-    return best.imageinfo[0].url as string;
+    const candidates = videos.slice(0, 5);
+    const choice = candidates[Math.floor(Math.random() * candidates.length)];
+    return choice.imageinfo[0].url as string;
   } catch (err) {
     console.warn('Error fetching from Wikimedia API:', err);
     return null;
@@ -122,9 +123,10 @@ export const processNarrationToScenes = async (
   }
 
 
+  const timestamp = Date.now();
   for (let index = 0; index < scenesToProcess.length; index++) {
     const item = scenesToProcess[index];
-    const sceneId = options.generateSpecificImageForSceneId || `scene-${index}-${Date.now()}`;
+    const sceneId = options.generateSpecificImageForSceneId || `scene-${index}-${timestamp}`;
     let footageUrl = '';
     let footageType: 'image' | 'video' = 'image';
     let imageGenError: string | undefined = undefined;
