@@ -75,6 +75,63 @@ const fetchWikimediaVideo = async (
   }
 };
 
+// Helper to fetch video from Coverr
+const fetchCoverrVideo = async (
+  query: string,
+  orientation: 'landscape' | 'portrait'
+): Promise<string | null> => {
+  const page = Math.floor(Math.random() * 5);
+  const searchUrl = `https://coverr.co/api/videos?search=${encodeURIComponent(query)}&page=${page}`;
+  try {
+    const resp = await fetch(searchUrl);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const hits: any[] = data?.hits || [];
+    const filtered = hits.filter(v => {
+      const orientationOk = orientation === 'landscape' ? !v.is_vertical : v.is_vertical;
+      return !v.is_premium && orientationOk;
+    });
+    if (filtered.length === 0) return null;
+    const choice = filtered[Math.floor(Math.random() * filtered.length)];
+    if (!choice.id) return null;
+    const detailResp = await fetch(`https://coverr.co/api/videos/${choice.id}`);
+    if (!detailResp.ok) return null;
+    const detailData = await detailResp.json();
+    return detailData?.urls?.mp4 || null;
+  } catch (err) {
+    console.warn('Error fetching from Coverr API:', err);
+    return null;
+  }
+};
+
+// Helper to fetch video from Internet Archive
+const fetchInternetArchiveVideo = async (
+  query: string
+): Promise<string | null> => {
+  const searchUrl =
+    `https://archive.org/advancedsearch.php?q=${encodeURIComponent(query + ' AND mediatype:movies')}` +
+    `&fl[]=identifier&rows=20&page=1&output=json`;
+  try {
+    const resp = await fetch(searchUrl);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const docs = data?.response?.docs;
+    if (!docs || docs.length === 0) return null;
+    const id = docs[Math.floor(Math.random() * docs.length)].identifier;
+    if (!id) return null;
+    const metaResp = await fetch(`https://archive.org/metadata/${id}`);
+    if (!metaResp.ok) return null;
+    const meta = await metaResp.json();
+    const files = meta?.files || [];
+    const mp4 = files.find((f: any) => f.name && f.name.endsWith('.mp4'));
+    if (!mp4) return null;
+    return `https://archive.org/download/${id}/${mp4.name}`;
+  } catch (err) {
+    console.warn('Error fetching from Internet Archive:', err);
+    return null;
+  }
+};
+
 // Fetches a placeholder image or video URL based on keywords.
 export const fetchPlaceholderFootageUrl = async (
   keywords: string[],
@@ -82,8 +139,6 @@ export const fetchPlaceholderFootageUrl = async (
   duration?: number,
   sceneId?: string // Optional sceneId for more unique placeholders if needed
 ): Promise<{ url: string; type: 'video' | 'image' }> => {
-  const width = aspectRatio === '16:9' ? 960 : 540; // used if fallback search needs orientation hints
-  const height = aspectRatio === '16:9' ? 540 : 960;
 
   const query = (keywords && keywords.length > 0)
     ? keywords.join(' ')
@@ -95,6 +150,16 @@ export const fetchPlaceholderFootageUrl = async (
   const wikiVideo = await fetchWikimediaVideo(query, orientation, duration, offset);
   if (wikiVideo) {
     return { url: wikiVideo, type: 'video' };
+  }
+
+  const coverrVideo = await fetchCoverrVideo(query, orientation);
+  if (coverrVideo) {
+    return { url: coverrVideo, type: 'video' };
+  }
+
+  const archiveVideo = await fetchInternetArchiveVideo(query);
+  if (archiveVideo) {
+    return { url: archiveVideo, type: 'video' };
   }
 
   // If no result for the specific query, attempt a generic stock search
