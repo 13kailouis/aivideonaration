@@ -2,7 +2,7 @@
 
 **AI-Powered Video Narration Tool**
 
-CineSynth transforms text scripts into marketing-ready videos in minutes. Powered by Gemini and Imagen models, it handles scene analysis, placeholder footage, subtitles and final video rendering right in your browser.
+CineSynth transforms text scripts into marketing-ready videos in minutes. Powered by Gemini and Imagen models, it handles scene analysis, placeholder video footage from Pexels, subtitles and final video rendering right in your browser.
 
 ## Features
 
@@ -18,7 +18,7 @@ CineSynth transforms text scripts into marketing-ready videos in minutes. Powere
    ```bash
    npm install
    ```
-2. Create a `.env.local` file and set `GEMINI_API_KEY`. Optionally add `PEXELS_API_KEY` for higher quality placeholder images. If the landing page should redirect to another domain when starting the app, set `LAUNCH_URL` to that URL.
+2. Create a `.env.local` file and set `GEMINI_API_KEY`. Optionally add `PEXELS_API_KEY` to enable placeholder videos from Pexels. If the landing page should redirect to another domain when starting the app, set `LAUNCH_URL` to that URL.
 3. Start the development server
    ```bash
    npm run dev

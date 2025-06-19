@@ -24,11 +24,16 @@ const generateSceneKenBurnsConfig = (duration: number): KenBurnsConfig => {
 
 
 // Fetches a placeholder image URL based on keywords.
+export interface PlaceholderFootageResult {
+  url: string;
+  type: 'video' | 'image';
+}
+
 export const fetchPlaceholderFootageUrl = async (
   keywords: string[],
   aspectRatio: AspectRatio,
   sceneId?: string // Optional sceneId for more unique placeholders if needed
-): Promise<string> => {
+): Promise<PlaceholderFootageResult> => {
   const width = aspectRatio === '16:9' ? 960 : 540; // smaller for faster downloads
   const height = aspectRatio === '16:9' ? 540 : 960;
 
@@ -41,15 +46,17 @@ export const fetchPlaceholderFootageUrl = async (
   if (PEXELS_API_KEY) {
     try {
       const resp = await fetch(
-        `https://api.pexels.com/v1/search?query=${encodeURIComponent(query)}&orientation=${orientation}&per_page=50`,
+        `https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&orientation=${orientation}&per_page=50`,
         { headers: { Authorization: PEXELS_API_KEY } }
       );
       if (resp.ok) {
         const data = await resp.json();
-        if (data.photos && data.photos.length > 0) {
-          const photo = data.photos[Math.floor(Math.random() * data.photos.length)];
-          const url = photo.src.large2x || photo.src.large || photo.src.original;
-          return `${url}?random_bust=${Date.now()}`;
+        if (data.videos && data.videos.length > 0) {
+          const video = data.videos[Math.floor(Math.random() * data.videos.length)];
+          const mp4 = video.video_files.find((f: any) => f.file_type === 'video/mp4');
+          if (mp4 && mp4.link) {
+            return { url: mp4.link, type: 'video' };
+          }
         }
       } else {
         console.warn(`Pexels API request failed with ${resp.status}`);
@@ -62,7 +69,7 @@ export const fetchPlaceholderFootageUrl = async (
   }
 
   const encodedQuery = encodeURIComponent(query);
-  return `https://loremflickr.com/${width}/${height}/${encodedQuery}?lock=${sceneId || Date.now()}`;
+  return { url: `https://loremflickr.com/${width}/${height}/${encodedQuery}?lock=${sceneId || Date.now()}`, type: 'image' };
 };
 
 export interface ProcessNarrationOptions {
@@ -104,6 +111,7 @@ export const processNarrationToScenes = async (
     const item = scenesToProcess[index];
     const sceneId = options.generateSpecificImageForSceneId || `scene-${index}-${Date.now()}`;
     let footageUrl = '';
+    let footageType: 'image' | 'video' = 'image';
     let imageGenError: string | undefined = undefined;
 
     const duration = item.duration > 0 ? item.duration : calculateDurationFromText(item.sceneText);
@@ -120,11 +128,14 @@ export const processNarrationToScenes = async (
       const imagenResult = await generateImageWithImagen(item.imagePrompt, sceneId);
       if (imagenResult.base64Image) {
         footageUrl = imagenResult.base64Image;
+        footageType = 'image';
       } else {
         imageGenError = imagenResult.userFriendlyError || 'AI image generation failed. Using placeholder.';
         console.warn(imageGenError, "Prompt:", item.imagePrompt);
         onProgress(imageGenError, (index + 1) / scenesToProcess.length, 'ai_image', index + 1, scenesToProcess.length, imageGenError);
-        footageUrl = await fetchPlaceholderFootageUrl(item.keywords, aspectRatio, sceneId);
+        const placeholder = await fetchPlaceholderFootageUrl(item.keywords, aspectRatio, sceneId);
+        footageUrl = placeholder.url;
+        footageType = placeholder.type;
       }
     } else {
       onProgress(
@@ -134,7 +145,9 @@ export const processNarrationToScenes = async (
         index + 1,
         scenesToProcess.length
       );
-      footageUrl = await fetchPlaceholderFootageUrl(item.keywords, aspectRatio, sceneId);
+      const placeholder = await fetchPlaceholderFootageUrl(item.keywords, aspectRatio, sceneId);
+      footageUrl = placeholder.url;
+      footageType = placeholder.type;
     }
     
     const kenBurnsConfig = generateSceneKenBurnsConfig(validatedDuration);
@@ -143,6 +156,7 @@ export const processNarrationToScenes = async (
         const sceneToUpdateIndex = existingScenes.findIndex(s => s.id === options.generateSpecificImageForSceneId);
         if (sceneToUpdateIndex !== -1) {
             existingScenes[sceneToUpdateIndex].footageUrl = footageUrl;
+            existingScenes[sceneToUpdateIndex].footageType = footageType;
             existingScenes[sceneToUpdateIndex].kenBurnsConfig = kenBurnsConfig; // Re-gen KB if image changes
             // Optionally update keywords/imagePrompt if they were also re-analyzed
             existingScenes[sceneToUpdateIndex].imagePrompt = item.imagePrompt; 
@@ -164,6 +178,7 @@ export const processNarrationToScenes = async (
           imagePrompt: item.imagePrompt,
           duration: validatedDuration,
           footageUrl: footageUrl,
+          footageType: footageType,
           kenBurnsConfig: kenBurnsConfig,
         });
     }
