@@ -11,6 +11,7 @@ CineSynth transforms text scripts into marketing-ready videos in minutes. Powere
 - Premium: AI‑generated imagery and TTS narration
 - Premium: One-click AI video generation
 - Browser-based WebM to MP4 conversion via ffmpeg.wasm
+- Safari users record directly to MP4 when possible to avoid conversion delays
 - Placeholder footage is pulled as videos directly from Wikimedia Commons, now
   selected randomly from the best search results so each scene has different
   footage when possible
