@@ -312,14 +312,15 @@ const App: React.FC = () => {
 
   const handleAddScene = async () => {
     const newSceneId = `scene-new-${Date.now()}`;
-    const placeholder = await fetchPlaceholderFootageUrl(["new scene", "abstract"], aspectRatio, newSceneId);
+    const placeholder = await fetchPlaceholderFootageUrl(["new scene", "abstract"], aspectRatio, 5, newSceneId);
     const newScene: Scene = {
       id: newSceneId,
       sceneText: "New scene text...",
       keywords: ["new scene"],
       imagePrompt: "Abstract background for a new scene",
       duration: 5,
-      footageUrl: placeholder,
+      footageUrl: placeholder.url,
+      footageType: placeholder.type,
       kenBurnsConfig: { targetScale: 1.1, targetXPercent: 0, targetYPercent: 0, originXRatio: 0.5, originYRatio: 0.5, animationDurationS: 5 }
     };
     setScenes(prevScenes => [...prevScenes, newScene]);
@@ -343,18 +344,23 @@ const App: React.FC = () => {
             const result = await generateImageWithImagen(sceneToUpdate.imagePrompt, sceneId);
             if (result.base64Image) {
                 newFootageUrl = result.base64Image;
+                sceneToUpdate.footageType = 'image';
             } else {
                 addWarning(result.userFriendlyError || `AI image failed for scene ${sceneId}. Using new placeholder.`);
-                newFootageUrl = await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-retry");
+                const placeholder = await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneToUpdate.duration, sceneId + "-retry");
+                newFootageUrl = placeholder.url;
+                sceneToUpdate.footageType = placeholder.type;
                 errorOccurred = true;
             }
         } else {
             setProgressValue(30);
-            newFootageUrl = await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-refresh");
+            const placeholder = await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneToUpdate.duration, sceneId + "-refresh");
+            newFootageUrl = placeholder.url;
+            sceneToUpdate.footageType = placeholder.type;
         }
         
         setScenes(prevScenes => prevScenes.map(s =>
-            s.id === sceneId ? { ...s, footageUrl: newFootageUrl } : s
+            s.id === sceneId ? { ...s, footageUrl: newFootageUrl, footageType: sceneToUpdate.footageType } : s
         ));
         setProgressMessage(errorOccurred ? 'Image updated with placeholder.' : 'Image updated successfully!');
         setProgressValue(100);

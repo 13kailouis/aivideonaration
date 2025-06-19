@@ -112,12 +112,13 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
                 </p>
                 <p className="text-gray-300 text-sm"><strong className="text-gray-400">Duration:</strong> {scene.duration}s</p>
                 <p className="text-gray-300 text-sm truncate">
-                    <strong className="text-gray-400">Image:</strong> {
-                        scene.footageUrl.startsWith('data:image') ? 
-                        (useAiImagesGlobal ? 'AI Generated' : 'Custom Image Data') : 
-                        'Placeholder'
+                    <strong className="text-gray-400">Footage:</strong> {
+                        scene.footageType === 'video' ?
+                        'Video Placeholder' :
+                        (scene.footageUrl.startsWith('data:image') ?
+                          (useAiImagesGlobal ? 'AI Generated' : 'Custom Image Data') : 'Placeholder')
                     }
-                    {scene.footageUrl.startsWith('data:image') && scene.imagePrompt && 
+                    {scene.footageType === 'image' && scene.footageUrl.startsWith('data:image') && scene.imagePrompt &&
                      <span className="text-xs text-gray-500 italic ml-1">(Prompt: {scene.imagePrompt.substring(0,30)}...)</span>
                     }
                 </p>

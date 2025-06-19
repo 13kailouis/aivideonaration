@@ -293,13 +293,25 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
       <div className={`relative w-full ${footageAspectRatioClass} bg-black overflow-hidden rounded-md`}>
         {imageSlots.map((slot, index) => (
           slot.scene ? (
-            <img
-              key={`slot-${index}-${slot.scene.id}`}
-              src={slot.scene.footageUrl}
-              alt={`Footage for: ${slot.scene.keywords.join(', ')}`}
-              style={getImageStyle(slot)}
-              loading={index === activeSlotIndex || index === (1-activeSlotIndex) ? "eager" : "lazy"}
-            />
+            slot.scene.footageType === 'video' ? (
+              <video
+                key={`slot-${index}-${slot.scene.id}`}
+                src={slot.scene.footageUrl}
+                style={getImageStyle(slot)}
+                autoPlay
+                muted
+                loop
+                playsInline
+              />
+            ) : (
+              <img
+                key={`slot-${index}-${slot.scene.id}`}
+                src={slot.scene.footageUrl}
+                alt={`Footage for: ${slot.scene.keywords.join(', ')}`}
+                style={getImageStyle(slot)}
+                loading={index === activeSlotIndex || index === (1-activeSlotIndex) ? "eager" : "lazy"}
+              />
+            )
           ) : null
         ))}
         {currentScene && isPlaying && (
