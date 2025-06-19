@@ -238,20 +238,30 @@ export const generateWebMFromScenes = (
         const stream = canvas.captureStream(VIDEO_FPS);
         console.log(`[Video Rendering Service] Canvas stream captured at ${VIDEO_FPS} FPS.`);
 
-        let mimeType = 'video/webm;codecs=vp8'; // Prioritize VP8 for compatibility
-        if (!MediaRecorder.isTypeSupported(mimeType)) {
-            console.warn(`[Video Rendering Service] VP8 MIME type not supported, trying VP9.`);
-            mimeType = 'video/webm;codecs=vp9';
-            if (!MediaRecorder.isTypeSupported(mimeType)) {
-                console.warn(`[Video Rendering Service] VP9 MIME type not supported, trying generic video/webm.`);
-                mimeType = 'video/webm';
-                if (!MediaRecorder.isTypeSupported(mimeType)) {
-                    console.error('[Video Rendering Service] No suitable WebM MIME type found.');
-                    if (stream.getTracks) stream.getTracks().forEach(track => track.stop());
-                    return reject(new Error('No suitable WebM MIME type found for MediaRecorder.'));
-                }
+        const candidateMimeTypes = [
+            'video/webm;codecs=vp9,opus',
+            'video/webm;codecs=vp8,opus',
+            'video/webm;codecs=vp9',
+            'video/webm;codecs=vp8',
+            'video/webm',
+            'video/mp4;codecs=avc1.42E01E,mp4a.40.2',
+            'video/mp4'
+        ];
+
+        let mimeType = '';
+        for (const type of candidateMimeTypes) {
+            if ((MediaRecorder as any).isTypeSupported?.(type)) {
+                mimeType = type;
+                break;
             }
         }
+
+        if (!mimeType) {
+            console.error('[Video Rendering Service] No supported MIME type found for MediaRecorder.');
+            if (stream.getTracks) stream.getTracks().forEach(track => track.stop());
+            return reject(new Error('MediaRecorder does not support WebM or MP4 on this browser.'));
+        }
+
         console.log(`[Video Rendering Service] Using MIME type: ${mimeType}`);
 
         mediaRecorder = new MediaRecorder(stream, {

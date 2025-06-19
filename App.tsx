@@ -209,16 +209,6 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     setProgressMessage('Initializing video rendering...');
     setProgressValue(0);
 
-    if (!window.crossOriginIsolated) {
-      const msg = 'Browser is not cross-origin isolated. MP4 conversion requires cross-origin isolation headers.';
-      console.error(msg);
-      setError(msg);
-      setProgressMessage('Unable to convert video without cross-origin isolation.');
-      setProgressValue(0);
-      setIsRenderingVideo(false);
-      return;
-    }
-
     try {
       const webmBlob = await generateWebMFromScenes(
         scenes,
@@ -239,15 +229,27 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
         }
       );
 
-      setProgressMessage('Converting to MP4...');
-      const mp4Blob = await convertWebMToMP4(webmBlob, (convProg) => {
-        setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
-        setProgressValue(100 - Math.round((1 - convProg) * 5));
-      });
+      let finalBlob = webmBlob;
+      if (!webmBlob.type.includes('mp4')) {
+        if (!window.crossOriginIsolated) {
+          const msg = 'Browser is not cross-origin isolated. MP4 conversion requires cross-origin isolation headers.';
+          console.error(msg);
+          setError(msg);
+          setProgressMessage('Unable to convert video without cross-origin isolation.');
+          setProgressValue(0);
+          setIsRenderingVideo(false);
+          return;
+        }
 
-      console.log('MP4 conversion complete. Blob size:', mp4Blob.size, 'bytes');
+        setProgressMessage('Converting to MP4...');
+        finalBlob = await convertWebMToMP4(webmBlob, (convProg) => {
+          setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
+          setProgressValue(100 - Math.round((1 - convProg) * 5));
+        });
+        console.log('MP4 conversion complete. Blob size:', finalBlob.size, 'bytes');
+      }
 
-      const url = URL.createObjectURL(mp4Blob);
+      const url = URL.createObjectURL(finalBlob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `cinesynth_video_${Date.now()}.mp4`;
