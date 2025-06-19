@@ -376,10 +376,20 @@ export const generateWebMFromScenes = (
             const numFramesForThisScene = Math.round(scene.duration * VIDEO_FPS);
             const progressInThisScene = numFramesForThisScene <= 1 ? 1 : currentFrameInScene / (numFramesForThisScene -1);
 
+            if (currentFrameInScene === 0 && preloaded.type === 'video' && preloaded.video) {
+                try {
+                    preloaded.video.currentTime = 0;
+                    preloaded.video.playbackRate = preloaded.duration / scene.duration;
+                    preloaded.video.muted = true;
+                    preloaded.video.play().catch(() => {});
+                } catch (e) {
+                    console.warn('Error starting video playback', e);
+                }
+            }
+
             try {
                 if (preloaded.type === 'video' && preloaded.video) {
                     const vid = preloaded.video;
-                    vid.currentTime = Math.min(preloaded.duration, progressInThisScene * preloaded.duration);
                     ctx.drawImage(vid, 0, 0, canvasWidth, canvasHeight);
                 } else if (preloaded.image) {
                     drawImageWithKenBurns(ctx, preloaded.image, canvasWidth, canvasHeight, progressInThisScene, scene.kenBurnsConfig);
@@ -404,6 +414,9 @@ export const generateWebMFromScenes = (
 
 
             if (currentFrameInScene >= numFramesForThisScene) {
+                if (preloaded.type === 'video' && preloaded.video) {
+                    preloaded.video.pause();
+                }
                 currentSceneIndex++;
                 currentFrameInScene = 0;
             }

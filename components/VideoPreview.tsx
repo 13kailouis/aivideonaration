@@ -140,11 +140,13 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
     });
 
     if (currentScene.footageType === 'video') {
-      const vid = videoRefs[primarySlot].current;
-      if (vid) {
-        vid.currentTime = 0;
-        if (isPlaying) vid.play().catch(() => {});
-      }
+      setTimeout(() => {
+        const vid = videoRefs[primarySlot].current;
+        if (vid) {
+          vid.currentTime = 0;
+          if (isPlaying) vid.play().catch(() => {});
+        }
+      }, 50);
     }
 
     animationTriggerTimeoutRef.current = window.setTimeout(() => {
@@ -200,11 +202,13 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
         });
 
         if (nextScene.footageType === 'video') {
-          const vid = videoRefs[secondarySlot].current;
-          if (vid) {
-            vid.currentTime = 0;
-            if (isPlaying) vid.play().catch(() => {});
-          }
+          setTimeout(() => {
+            const vid = videoRefs[secondarySlot].current;
+            if (vid) {
+              vid.currentTime = 0;
+              if (isPlaying) vid.play().catch(() => {});
+            }
+          }, 50);
         }
 
         animationTriggerTimeoutRef.current = window.setTimeout(() => {
@@ -327,6 +331,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
                 style={getMediaStyle(slot)}
                 playsInline
                 muted
+                autoPlay
               />
             ) : (
               <img
