@@ -59,6 +59,19 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
   ]);
   const [activeSlotIndex, setActiveSlotIndex] = useState(0);
 
+  const videoRefs = [useRef<HTMLVideoElement | null>(null), useRef<HTMLVideoElement | null>(null)];
+
+  useEffect(() => {
+    imageSlots.forEach((slot, idx) => {
+      if (slot.scene?.footageType === 'video') {
+        const vid = videoRefs[idx].current;
+        if (vid) {
+          try { vid.currentTime = 0; vid.play().catch(() => {}); } catch {}
+        }
+      }
+    });
+  }, [imageSlots]);
+
   const sceneTimeoutRef = useRef<number | null>(null);
   const progressIntervalRef = useRef<number | null>(null);
   const animationTriggerTimeoutRef = useRef<number | null>(null);
@@ -293,13 +306,24 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
       <div className={`relative w-full ${footageAspectRatioClass} bg-black overflow-hidden rounded-md`}>
         {imageSlots.map((slot, index) => (
           slot.scene ? (
-            <img
-              key={`slot-${index}-${slot.scene.id}`}
-              src={slot.scene.footageUrl}
-              alt={`Footage for: ${slot.scene.keywords.join(', ')}`}
-              style={getImageStyle(slot)}
-              loading={index === activeSlotIndex || index === (1-activeSlotIndex) ? "eager" : "lazy"}
-            />
+            slot.scene.footageType === 'video' ? (
+              <video
+                key={`slot-${index}-${slot.scene.id}`}
+                ref={videoRefs[index]}
+                src={slot.scene.footageUrl}
+                style={getImageStyle(slot)}
+                muted
+                playsInline
+              />
+            ) : (
+              <img
+                key={`slot-${index}-${slot.scene.id}`}
+                src={slot.scene.footageUrl}
+                alt={`Footage for: ${slot.scene.keywords.join(', ')}`}
+                style={getImageStyle(slot)}
+                loading={index === activeSlotIndex || index === (1-activeSlotIndex) ? "eager" : "lazy"}
+              />
+            )
           ) : null
         ))}
         {currentScene && isPlaying && (
