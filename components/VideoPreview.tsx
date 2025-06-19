@@ -315,6 +315,8 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
                 muted
                 playsInline
                 loop
+                autoPlay
+                preload="auto"
               />
             ) : (
               <img
