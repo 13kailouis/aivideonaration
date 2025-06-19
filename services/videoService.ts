@@ -93,7 +93,11 @@ const fetchCoverrVideo = async (
     });
     if (filtered.length === 0) return null;
     const choice = filtered[Math.floor(Math.random() * filtered.length)];
-    return choice.playback_id ? `https://stream.mux.com/${choice.playback_id}/medium.mp4` : null;
+    if (!choice.id) return null;
+    const detailResp = await fetch(`https://coverr.co/api/videos/${choice.id}`);
+    if (!detailResp.ok) return null;
+    const detailData = await detailResp.json();
+    return detailData?.urls?.mp4 || null;
   } catch (err) {
     console.warn('Error fetching from Coverr API:', err);
     return null;
@@ -135,8 +139,6 @@ export const fetchPlaceholderFootageUrl = async (
   duration?: number,
   sceneId?: string // Optional sceneId for more unique placeholders if needed
 ): Promise<{ url: string; type: 'video' | 'image' }> => {
-  const width = aspectRatio === '16:9' ? 960 : 540; // used if fallback search needs orientation hints
-  const height = aspectRatio === '16:9' ? 540 : 960;
 
   const query = (keywords && keywords.length > 0)
     ? keywords.join(' ')
