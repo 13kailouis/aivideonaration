@@ -12,7 +12,8 @@ CineSynth transforms text scripts into marketing-ready videos in minutes. Powere
 - Premium: One-click AI video generation
 - Browser-based WebM to MP4 conversion via ffmpeg.wasm
 - Placeholder footage is automatically sourced from Wikimedia Commons, Coverr *(requires API key)*,
-  and Internet Archive movies. Results are selected randomly from the best search
+  and Internet Archive movies. Internet Archive clips are loaded via `cors.archive.org`
+  to avoid cross-origin issues. Results are selected randomly from the best search
   results so each scene has different footage when possible.
 
 ## Getting Started

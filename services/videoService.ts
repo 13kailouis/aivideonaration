@@ -99,7 +99,8 @@ const fetchArchiveVideo = async (
       typeof f.name === 'string' && f.name.toLowerCase().endsWith('.mp4')
     );
     if (!file) return null;
-    return `https://archive.org/download/${choice}/${file.name}`;
+    // Use cors.archive.org to avoid CORS errors when loading the video
+    return `https://cors.archive.org/download/${choice}/${file.name}`;
   } catch (err) {
     console.warn('Error fetching from Internet Archive:', err);
     return null;
