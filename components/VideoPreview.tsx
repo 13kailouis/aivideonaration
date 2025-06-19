@@ -298,6 +298,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
                 key={`slot-${index}-${slot.scene.id}`}
                 src={slot.scene.footageUrl}
                 style={getImageStyle(slot)}
+                crossOrigin="anonymous"
                 autoPlay
                 muted
                 loop
@@ -309,6 +310,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
                 src={slot.scene.footageUrl}
                 alt={`Footage for: ${slot.scene.keywords.join(', ')}`}
                 style={getImageStyle(slot)}
+                crossOrigin="anonymous"
                 loading={index === activeSlotIndex || index === (1-activeSlotIndex) ? "eager" : "lazy"}
               />
             )
