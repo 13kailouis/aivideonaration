@@ -1,6 +1,6 @@
 // Timestamp: 2024-09-12T10:00:00Z - Refresh
 import { Scene, GeminiSceneResponseItem, KenBurnsConfig, AspectRatio } from '../types.ts';
-import { FALLBACK_FOOTAGE_KEYWORDS, AVERAGE_WORDS_PER_SECOND, PEXELS_API_KEY } from '../constants.ts';
+import { FALLBACK_FOOTAGE_KEYWORDS, AVERAGE_WORDS_PER_SECOND } from '../constants.ts';
 import { generateImageWithImagen } from './geminiService.ts';
 
 // Helper to generate Ken Burns configuration for a scene
@@ -23,7 +23,45 @@ const generateSceneKenBurnsConfig = (duration: number): KenBurnsConfig => {
 };
 
 
-// Fetches a placeholder image URL based on keywords.
+// Helper to fetch video from Wikimedia Commons
+const fetchWikimediaVideo = async (
+  query: string,
+  orientation: 'landscape' | 'portrait',
+  duration?: number
+): Promise<string | null> => {
+  const searchUrl =
+    `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*` +
+    `&generator=search&gsrsearch=${encodeURIComponent(query + ' filetype:video')}` +
+    `&gsrlimit=25&gsrnamespace=6&prop=imageinfo&iiprop=url|size|duration|mime`;
+  try {
+    const resp = await fetch(searchUrl);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const pages = data?.query?.pages;
+    if (!pages) return null;
+    let videos: any[] = Object.values(pages);
+    videos = videos.filter(v => v.imageinfo && v.imageinfo[0] && v.imageinfo[0].mime && v.imageinfo[0].mime.startsWith('video'));
+    videos = videos.filter(v => {
+      const info = v.imageinfo[0];
+      return orientation === 'landscape' ? info.width >= info.height : info.height >= info.width;
+    });
+    if (videos.length === 0) return null;
+    let best = videos[0];
+    if (duration) {
+      best = videos.reduce((a, b) => {
+        const ad = Math.abs((a.imageinfo[0].duration || 0) - duration);
+        const bd = Math.abs((b.imageinfo[0].duration || 0) - duration);
+        return bd < ad ? b : a;
+      }, best);
+    }
+    return best.imageinfo[0].url as string;
+  } catch (err) {
+    console.warn('Error fetching from Wikimedia API:', err);
+    return null;
+  }
+};
+
+// Fetches a placeholder image or video URL based on keywords.
 export const fetchPlaceholderFootageUrl = async (
   keywords: string[],
   aspectRatio: AspectRatio,
@@ -39,38 +77,9 @@ export const fetchPlaceholderFootageUrl = async (
 
   const orientation = aspectRatio === '16:9' ? 'landscape' : 'portrait';
 
-  if (PEXELS_API_KEY) {
-    try {
-      const resp = await fetch(
-        `https://api.pexels.com/videos/search?query=${encodeURIComponent(query)}&orientation=${orientation}&per_page=50`,
-        { headers: { Authorization: PEXELS_API_KEY } }
-      );
-      if (resp.ok) {
-        const data = await resp.json();
-        if (data.videos && data.videos.length > 0) {
-          const filtered = data.videos.filter((v: any) =>
-            orientation === 'landscape' ? v.width >= v.height : v.height >= v.width
-          );
-          const videos = filtered.length > 0 ? filtered : data.videos;
-          let chosen = videos[0];
-          if (duration) {
-            chosen = videos.reduce((best: any, cur: any) =>
-              Math.abs(cur.duration - duration!) < Math.abs(best.duration - duration!) ? cur : best,
-            videos[0]);
-          }
-          const bestFile = chosen.video_files.sort((a: any, b: any) => b.width - a.width)[0];
-          if (bestFile && bestFile.link) {
-            return { url: `${bestFile.link}`, type: 'video' };
-          }
-        }
-      } else {
-        console.warn(`Pexels API request failed with ${resp.status}`);
-      }
-    } catch (err) {
-      console.warn('Error fetching from Pexels video API:', err);
-    }
-  } else {
-    console.warn('PEXELS_API_KEY not set. Falling back to loremflickr.');
+  const wikiVideo = await fetchWikimediaVideo(query, orientation, duration);
+  if (wikiVideo) {
+    return { url: wikiVideo, type: 'video' };
   }
 
   const encodedQuery = encodeURIComponent(query);
