@@ -14,6 +14,8 @@ import { generateWebMFromScenes } from './services/videoRenderingService.ts';
 import { convertWebMToMP4 } from './services/mp4ConversionService.ts';
 import { generateAIVideo } from './services/aiVideoGenerationService.ts';
 import { SparklesIcon } from './components/IconComponents.tsx';
+import GoogleLoginButton from './components/GoogleLoginButton.tsx';
+import { getRemainingGenerations, recordGeneration } from './services/usageService.ts';
 
 const premiumUser = IS_PREMIUM_USER;
 
@@ -31,6 +33,10 @@ const App: React.FC = () => {
   const [includeWatermark, setIncludeWatermark] = useState<boolean>(false);
   const [useAiImages, setUseAiImages] = useState<boolean>(false);
   const [useAiVideo, setUseAiVideo] = useState<boolean>(false);
+  const [user, setUser] = useState<{ name: string } | null>(null);
+
+  const handleLogin = (u: { name: string }) => setUser(u);
+  const handleLogout = () => setUser(null);
 
   const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(premiumUser);
   const [ttsPlaybackStatus, setTTSPlaybackStatus] = useState<'idle' | 'playing' | 'paused' | 'ended'>('idle');
@@ -39,6 +45,7 @@ const App: React.FC = () => {
 
   const showPreview = scenes.length > 0 || isGeneratingScenes || isRenderingVideo;
   const [previewMounted, setPreviewMounted] = useState(showPreview);
+  const remainingGenerations = getRemainingGenerations(!!user);
 
   useEffect(() => {
     if (showPreview) {
@@ -122,6 +129,13 @@ const App: React.FC = () => {
        setError("Cannot generate video: Gemini API Key is missing.");
        return;
     }
+    const remaining = getRemainingGenerations(!!user);
+    if (remaining <= 0) {
+       setError(user ?
+         'Daily video generation limit of 5 reached.' :
+         'Daily video generation limit of 2 reached. Sign in with Google for more.');
+       return;
+    }
 
     if (useAiVideo) {
       setIsRenderingVideo(true);
@@ -140,6 +154,7 @@ const App: React.FC = () => {
         URL.revokeObjectURL(url);
         setProgressMessage('AI video downloaded!');
         setProgressValue(100);
+        recordGeneration();
       } catch (err) {
         const msg = err instanceof Error ? err.message : 'Failed to generate AI video.';
         setError(msg);
@@ -179,6 +194,7 @@ const App: React.FC = () => {
       
       handleSceneGenerationProgress('Video preview ready!', 1, 'finalizing');
       setScenes(processedScenes);
+      recordGeneration();
       
       setTimeout(() => {
           setProgressMessage('');
@@ -379,7 +395,10 @@ const App: React.FC = () => {
 
   return (
     <div className="min-h-screen bg-black text-white flex flex-col items-center p-4 sm:p-6 lg:p-8">
-      <header className="mb-6 sm:mb-8 text-center">
+      <header className="mb-6 sm:mb-8 text-center relative">
+        <div className="absolute top-0 right-0">
+          <GoogleLoginButton user={user} onLogin={handleLogin} onLogout={handleLogout} />
+        </div>
         <div className="flex items-center justify-center space-x-3">
            <SparklesIcon className="w-8 h-8 sm:w-10 sm:h-10 text-white" />
            <h1
@@ -393,6 +412,7 @@ const App: React.FC = () => {
         <p className="mt-2 text-base sm:text-lg text-gray-400">
           Transform text into videos with AI-powered visuals and spoken narration.
         </p>
+        <p className="mt-1 text-sm text-gray-400">Remaining videos today: {remainingGenerations}</p>
       </header>
 
       {apiKeyMissing && (
@@ -438,6 +458,7 @@ const App: React.FC = () => {
               onUseAiVideoChange={setUseAiVideo}
               apiKeyMissing={apiKeyMissing}
               isPremiumUser={premiumUser}
+              generationLimitReached={remainingGenerations === 0}
             />
           </div>
         </div>
