@@ -1,4 +1,3 @@
-// Timestamp: 2024-09-12T10:00:00Z - Refresh
 import {
   Scene,
   GeminiSceneResponseItem,
@@ -76,7 +75,45 @@ const fetchWikimediaVideo = async (
   }
 };
 
-// Fetches a placeholder video URL based on keywords.
+
+const fetchWikimediaVideo = async (
+  query: string,
+  orientation: 'landscape' | 'portrait',
+  duration?: number
+): Promise<string | null> => {
+  const searchUrl =
+    `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*` +
+    `&generator=search&gsrsearch=${encodeURIComponent(query + ' filetype:video')}` +
+    `&gsrlimit=25&gsrnamespace=6&prop=imageinfo&iiprop=url|size|duration|mime`;
+  try {
+    const resp = await fetch(searchUrl);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const pages = data?.query?.pages;
+    if (!pages) return null;
+    let videos: any[] = Object.values(pages);
+    videos = videos.filter(v => v.imageinfo && v.imageinfo[0] && v.imageinfo[0].mime && v.imageinfo[0].mime.startsWith('video'));
+    videos = videos.filter(v => {
+      const info = v.imageinfo[0];
+      return orientation === 'landscape' ? info.width >= info.height : info.height >= info.width;
+    });
+    if (videos.length === 0) return null;
+    let best = videos[0];
+    if (duration) {
+      best = videos.reduce((a, b) => {
+        const ad = Math.abs((a.imageinfo[0].duration || 0) - duration);
+        const bd = Math.abs((b.imageinfo[0].duration || 0) - duration);
+        return bd < ad ? b : a;
+      }, best);
+    }
+    return best.imageinfo[0].url as string;
+  } catch (err) {
+    console.warn('Error fetching from Wikimedia API:', err);
+    return null;
+  }
+};
+
+
 export const fetchPlaceholderFootageUrl = async (
   keywords: string[],
   aspectRatio: AspectRatio,
@@ -106,6 +143,21 @@ export const fetchPlaceholderFootageUrl = async (
         duration,
       );
     }
+
+  sceneId?: string // Optional sceneId for more unique placeholders if needed
+): Promise<{ url: string; type: 'video' | 'image' }> => {
+  const width = aspectRatio === '16:9' ? 960 : 540; // smaller for faster downloads
+  const height = aspectRatio === '16:9' ? 540 : 960;
+
+  const query = (keywords && keywords.length > 0)
+    ? keywords.join(' ')
+    : FALLBACK_FOOTAGE_KEYWORDS[Math.floor(Math.random() * FALLBACK_FOOTAGE_KEYWORDS.length)];
+
+  const orientation = aspectRatio === '16:9' ? 'landscape' : 'portrait';
+
+  const wikiVideo = await fetchWikimediaVideo(query, orientation, duration);
+  if (wikiVideo) {
+    return { url: wikiVideo, type: 'video' };
   }
 
   const defaultVideo =
