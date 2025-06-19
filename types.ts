@@ -15,6 +15,7 @@ export interface Scene {
   imagePrompt: string; // Added for AI image generation
   duration: number; // in seconds
   footageUrl: string; // URL to image (can be base64 data URL)
+  mediaType: 'image' | 'video';
   kenBurnsConfig: KenBurnsConfig;
 }
 

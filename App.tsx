@@ -9,7 +9,7 @@ import SceneEditor from './components/SceneEditor.tsx'; // New Component
 import { Scene, AspectRatio, GeminiSceneResponseItem } from './types.ts';
 import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY, IS_PREMIUM_USER } from './constants.ts';
 import { analyzeNarrationWithGemini, generateImageWithImagen } from './services/geminiService.ts';
-import { processNarrationToScenes, fetchPlaceholderFootageUrl } from './services/videoService.ts';
+import { processNarrationToScenes, fetchPlaceholderVideoUrl, fetchPlaceholderImageUrl } from './services/videoService.ts';
 import { generateWebMFromScenes } from './services/videoRenderingService.ts';
 import { convertWebMToMP4 } from './services/mp4ConversionService.ts';
 import { generateAIVideo } from './services/aiVideoGenerationService.ts';
@@ -312,7 +312,8 @@ const App: React.FC = () => {
 
   const handleAddScene = async () => {
     const newSceneId = `scene-new-${Date.now()}`;
-    const placeholder = await fetchPlaceholderFootageUrl(["new scene", "abstract"], aspectRatio, newSceneId);
+    const placeholderVideo = await fetchPlaceholderVideoUrl(["new scene", "abstract"], aspectRatio);
+    const placeholder = placeholderVideo || await fetchPlaceholderImageUrl(["new scene", "abstract"], aspectRatio, newSceneId);
     const newScene: Scene = {
       id: newSceneId,
       sceneText: "New scene text...",
@@ -320,6 +321,7 @@ const App: React.FC = () => {
       imagePrompt: "Abstract background for a new scene",
       duration: 5,
       footageUrl: placeholder,
+      mediaType: placeholderVideo ? 'video' : 'image',
       kenBurnsConfig: { targetScale: 1.1, targetXPercent: 0, targetYPercent: 0, originXRatio: 0.5, originYRatio: 0.5, animationDurationS: 5 }
     };
     setScenes(prevScenes => [...prevScenes, newScene]);
@@ -345,16 +347,30 @@ const App: React.FC = () => {
                 newFootageUrl = result.base64Image;
             } else {
                 addWarning(result.userFriendlyError || `AI image failed for scene ${sceneId}. Using new placeholder.`);
-                newFootageUrl = await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-retry");
+                  const vid = await fetchPlaceholderVideoUrl(sceneToUpdate.keywords, aspectRatio);
+                if (vid) {
+                    newFootageUrl = vid;
+                    sceneToUpdate.mediaType = 'video';
+                } else {
+                    newFootageUrl = await fetchPlaceholderImageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-retry");
+                    sceneToUpdate.mediaType = 'image';
+                }
                 errorOccurred = true;
             }
         } else {
             setProgressValue(30);
-            newFootageUrl = await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-refresh");
+            const vid = await fetchPlaceholderVideoUrl(sceneToUpdate.keywords, aspectRatio);
+            if (vid) {
+                newFootageUrl = vid;
+                sceneToUpdate.mediaType = 'video';
+            } else {
+                newFootageUrl = await fetchPlaceholderImageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-refresh");
+                sceneToUpdate.mediaType = 'image';
+            }
         }
-        
+
         setScenes(prevScenes => prevScenes.map(s =>
-            s.id === sceneId ? { ...s, footageUrl: newFootageUrl } : s
+            s.id === sceneId ? { ...s, footageUrl: newFootageUrl, mediaType: sceneToUpdate.mediaType } : s
         ));
         setProgressMessage(errorOccurred ? 'Image updated with placeholder.' : 'Image updated successfully!');
         setProgressValue(100);

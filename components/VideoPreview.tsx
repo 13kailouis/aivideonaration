@@ -5,7 +5,7 @@ import { PlayIcon, PauseIcon, DownloadIcon } from './IconComponents.tsx';
 
 const FADE_DURATION_MS = 1000; // 1 second for cross-fade
 
-interface ImageSlotState {
+interface MediaSlotState {
   scene: Scene | null;
   opacity: number;
   zIndex: number;
@@ -28,7 +28,7 @@ interface VideoPreviewProps {
   ttsPlaybackStatus: 'idle' | 'playing' | 'paused' | 'ended';
 }
 
-const getDefaultSlotState = (): ImageSlotState => ({
+const getDefaultSlotState = (): MediaSlotState => ({
   scene: null,
   opacity: 0,
   zIndex: 0,
@@ -54,7 +54,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
   const [isPlaying, setIsPlaying] = useState(false);
   const [elapsedTime, setElapsedTime] = useState(0);
 
-  const [imageSlots, setImageSlots] = useState<[ImageSlotState, ImageSlotState]>([
+  const [imageSlots, setImageSlots] = useState<[MediaSlotState, MediaSlotState]>([
     getDefaultSlotState(), getDefaultSlotState()
   ]);
   const [activeSlotIndex, setActiveSlotIndex] = useState(0);
@@ -62,6 +62,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
   const sceneTimeoutRef = useRef<number | null>(null);
   const progressIntervalRef = useRef<number | null>(null);
   const animationTriggerTimeoutRef = useRef<number | null>(null);
+  const videoRefs = useRef<(HTMLVideoElement | null)[]>([null, null]);
 
   const currentScene = scenes[currentSceneIndex];
 
@@ -116,7 +117,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
     const cssTransformOrigin = `${kbConfig.originXRatio * 100}% ${kbConfig.originYRatio * 100}%`;
 
     setImageSlots(prevSlots => {
-      const newSlots = [...prevSlots] as [ImageSlotState, ImageSlotState];
+      const newSlots = [...prevSlots] as [MediaSlotState, MediaSlotState];
       newSlots[primarySlot] = {
         scene: currentScene,
         opacity: 1,
@@ -132,10 +133,14 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
       }
       return newSlots;
     });
+    if (currentScene.mediaType === 'video') {
+      const vid = videoRefs.current[primarySlot];
+      if (vid) { vid.currentTime = 0; vid.play().catch(() => {}); }
+    }
 
     animationTriggerTimeoutRef.current = window.setTimeout(() => {
       setImageSlots(prevSlots => {
-        const newSlots = [...prevSlots] as [ImageSlotState, ImageSlotState];
+        const newSlots = [...prevSlots] as [MediaSlotState, MediaSlotState];
         if (newSlots[primarySlot].scene?.id === currentScene.id) {
           newSlots[primarySlot].transform = targetCSSTransform;
           newSlots[primarySlot].transition = `opacity ${FADE_DURATION_MS}ms ease-in-out, transform ${kbConfig.animationDurationS}s linear`;
@@ -168,7 +173,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
 
 
         setImageSlots(prevSlots => {
-          const newSlots = [...prevSlots] as [ImageSlotState, ImageSlotState];
+          const newSlots = [...prevSlots] as [MediaSlotState, MediaSlotState];
           newSlots[primarySlot] = { ...newSlots[primarySlot], opacity: 0, zIndex: 5 };
           newSlots[secondarySlot] = {
             scene: nextScene,
@@ -180,10 +185,14 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
           };
           return newSlots;
         });
+        if (nextScene.mediaType === 'video') {
+          const vid = videoRefs.current[secondarySlot];
+          if (vid) { vid.currentTime = 0; vid.play().catch(() => {}); }
+        }
 
         animationTriggerTimeoutRef.current = window.setTimeout(() => {
           setImageSlots(prevSlots => {
-            const newSlots = [...prevSlots] as [ImageSlotState, ImageSlotState];
+            const newSlots = [...prevSlots] as [MediaSlotState, MediaSlotState];
             if (newSlots[secondarySlot].scene?.id === nextScene.id) {
               newSlots[secondarySlot].transform = nextTargetCSSTransform;
               newSlots[secondarySlot].transition = `opacity ${FADE_DURATION_MS}ms ease-in-out, transform ${nextKbConfig.animationDurationS}s linear`;
@@ -199,7 +208,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
 
       } else { 
         setImageSlots(prevSlots => {
-          const newSlots = [...prevSlots] as [ImageSlotState, ImageSlotState];
+          const newSlots = [...prevSlots] as [MediaSlotState, MediaSlotState];
           newSlots[primarySlot] = { ...newSlots[primarySlot], opacity: 0 };
           return newSlots;
         });
@@ -233,28 +242,32 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
 
     if (newIsPlaying) {
         if (currentSceneIndex === scenes.length - 1 && elapsedTime >= (currentScene?.duration || 0) * 1000) {
-            handleRestart(); 
+            handleRestart();
         } else {
            if (ttsPlaybackStatus === 'paused') onTTSResume();
         }
+        const vid = videoRefs.current[activeSlotIndex];
+        if (vid) vid.play().catch(() => {});
     } else {
         if (ttsPlaybackStatus === 'playing') onTTSPause();
+        videoRefs.current.forEach(v => v?.pause());
     }
   };
 
   const handleRestart = () => {
     if (scenes.length === 0 || isGenerating) return;
-    onTTSStop(); 
+    onTTSStop();
     setCurrentSceneIndex(0);
     setActiveSlotIndex(0);
     setImageSlots([getDefaultSlotState(), getDefaultSlotState()]);
+    videoRefs.current.forEach(v => { if (v) { v.currentTime = 0; v.pause(); } });
     setElapsedTime(0);
-    setIsPlaying(true); 
+    setIsPlaying(true);
   };
 
   const footageAspectRatioClass = aspectRatio === '16:9' ? 'aspect-video' : 'aspect-[9/16]';
 
-  const getImageStyle = (slotState: ImageSlotState): React.CSSProperties => ({
+  const getMediaStyle = (slotState: MediaSlotState): React.CSSProperties => ({
     position: 'absolute',
     inset: 0,
     width: '100%',
@@ -293,13 +306,27 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
       <div className={`relative w-full ${footageAspectRatioClass} bg-black overflow-hidden rounded-md`}>
         {imageSlots.map((slot, index) => (
           slot.scene ? (
-            <img
-              key={`slot-${index}-${slot.scene.id}`}
-              src={slot.scene.footageUrl}
-              alt={`Footage for: ${slot.scene.keywords.join(', ')}`}
-              style={getImageStyle(slot)}
-              loading={index === activeSlotIndex || index === (1-activeSlotIndex) ? "eager" : "lazy"}
-            />
+            slot.scene.mediaType === 'video' ? (
+              <video
+                key={`slot-${index}-${slot.scene.id}`}
+                ref={el => (videoRefs.current[index] = el)}
+                src={slot.scene.footageUrl}
+                style={getMediaStyle(slot)}
+                muted
+                playsInline
+                loop
+                autoPlay
+                preload="auto"
+              />
+            ) : (
+              <img
+                key={`slot-${index}-${slot.scene.id}`}
+                src={slot.scene.footageUrl}
+                alt={`Footage for: ${slot.scene.keywords.join(', ')}`}
+                style={getMediaStyle(slot)}
+                loading={index === activeSlotIndex || index === (1-activeSlotIndex) ? "eager" : "lazy"}
+              />
+            )
           ) : null
         ))}
         {currentScene && isPlaying && (
