@@ -239,15 +239,17 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
         }
       );
 
-      setProgressMessage('Converting to MP4...');
-      const mp4Blob = await convertWebMToMP4(webmBlob, (convProg) => {
-        setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
-        setProgressValue(100 - Math.round((1 - convProg) * 5));
-      });
+      let finalBlob = webmBlob;
+      if (!webmBlob.type.includes('mp4')) {
+        setProgressMessage('Converting to MP4...');
+        finalBlob = await convertWebMToMP4(webmBlob, (convProg) => {
+          setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
+          setProgressValue(100 - Math.round((1 - convProg) * 5));
+        });
+        console.log('MP4 conversion complete. Blob size:', finalBlob.size, 'bytes');
+      }
 
-      console.log('MP4 conversion complete. Blob size:', mp4Blob.size, 'bytes');
-
-      const url = URL.createObjectURL(mp4Blob);
+      const url = URL.createObjectURL(finalBlob);
       const a = document.createElement('a');
       a.href = url;
       a.download = `cinesynth_video_${Date.now()}.mp4`;
