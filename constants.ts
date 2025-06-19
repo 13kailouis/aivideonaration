@@ -16,6 +16,7 @@ export const IMAGEN_MODEL = 'imagen-3.0-generate-002';
 // Placeholder for API Key - this should be set in the environment
 export const API_KEY = process.env.API_KEY;
 export const PEXELS_API_KEY = process.env.PEXELS_API_KEY;
+export const USE_VIDEO_PLACEHOLDERS = process.env.USE_VIDEO_PLACEHOLDERS === 'true';
 // Optional URL where the main app is hosted. If set, the landing page
 // will redirect here when users click "Get Started".
 export const LAUNCH_URL = process.env.LAUNCH_URL;

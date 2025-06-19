@@ -7,9 +7,9 @@ import VideoPreview from './components/VideoPreview.tsx';
 import ProgressBar from './components/ProgressBar.tsx';
 import SceneEditor from './components/SceneEditor.tsx'; // New Component
 import { Scene, AspectRatio, GeminiSceneResponseItem } from './types.ts';
-import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY, IS_PREMIUM_USER } from './constants.ts';
+import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY, IS_PREMIUM_USER, USE_VIDEO_PLACEHOLDERS } from './constants.ts';
 import { analyzeNarrationWithGemini, generateImageWithImagen } from './services/geminiService.ts';
-import { processNarrationToScenes, fetchPlaceholderFootageUrl } from './services/videoService.ts';
+import { processNarrationToScenes, fetchPlaceholderFootageUrl, fetchPlaceholderVideoUrl } from './services/videoService.ts';
 import { generateWebMFromScenes } from './services/videoRenderingService.ts';
 import { convertWebMToMP4 } from './services/mp4ConversionService.ts';
 import { generateAIVideo } from './services/aiVideoGenerationService.ts';
@@ -30,6 +30,7 @@ const App: React.FC = () => {
   const [apiKeyMissing, setApiKeyMissing] = useState<boolean>(false);
   const [includeWatermark, setIncludeWatermark] = useState<boolean>(false);
   const [useAiImages, setUseAiImages] = useState<boolean>(false);
+  const [useVideoPlaceholders, setUseVideoPlaceholders] = useState<boolean>(USE_VIDEO_PLACEHOLDERS);
   const [useAiVideo, setUseAiVideo] = useState<boolean>(false);
 
   const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(premiumUser);
@@ -171,9 +172,9 @@ const App: React.FC = () => {
       }
       
       const processedScenes: Scene[] = await processNarrationToScenes(
-        analysisResults, 
+        analysisResults,
         aspectRatio,
-        { useAiGeneratedImages: useAiImages }, 
+        { useAiGeneratedImages: useAiImages, useVideoPlaceholders },
         handleSceneGenerationProgress
       );
       
@@ -195,7 +196,7 @@ const App: React.FC = () => {
     } finally {
       setIsGeneratingScenes(false);
     }
-  }, [narrationText, aspectRatio, apiKeyMissing, useAiImages, useAiVideo, handleSceneGenerationProgress]);
+  }, [narrationText, aspectRatio, apiKeyMissing, useAiImages, useVideoPlaceholders, useAiVideo, handleSceneGenerationProgress]);
 
   const handleDownloadVideo = async () => {
     if (scenes.length === 0 || isRenderingVideo) {
@@ -312,7 +313,9 @@ const App: React.FC = () => {
 
   const handleAddScene = async () => {
     const newSceneId = `scene-new-${Date.now()}`;
-    const placeholder = await fetchPlaceholderFootageUrl(["new scene", "abstract"], aspectRatio, newSceneId);
+    const placeholder = useVideoPlaceholders
+      ? await fetchPlaceholderVideoUrl(["new scene", "abstract"], aspectRatio, newSceneId)
+      : await fetchPlaceholderFootageUrl(["new scene", "abstract"], aspectRatio, newSceneId);
     const newScene: Scene = {
       id: newSceneId,
       sceneText: "New scene text...",
@@ -320,6 +323,7 @@ const App: React.FC = () => {
       imagePrompt: "Abstract background for a new scene",
       duration: 5,
       footageUrl: placeholder,
+      isVideo: useVideoPlaceholders ? true : undefined,
       kenBurnsConfig: { targetScale: 1.1, targetXPercent: 0, targetYPercent: 0, originXRatio: 0.5, originYRatio: 0.5, animationDurationS: 5 }
     };
     setScenes(prevScenes => [...prevScenes, newScene]);
@@ -345,16 +349,20 @@ const App: React.FC = () => {
                 newFootageUrl = result.base64Image;
             } else {
                 addWarning(result.userFriendlyError || `AI image failed for scene ${sceneId}. Using new placeholder.`);
-                newFootageUrl = await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-retry");
+                newFootageUrl = useVideoPlaceholders
+                  ? await fetchPlaceholderVideoUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-retry")
+                  : await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-retry");
                 errorOccurred = true;
             }
         } else {
             setProgressValue(30);
-            newFootageUrl = await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-refresh");
+            newFootageUrl = useVideoPlaceholders
+              ? await fetchPlaceholderVideoUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-refresh")
+              : await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneId + "-refresh");
         }
         
         setScenes(prevScenes => prevScenes.map(s =>
-            s.id === sceneId ? { ...s, footageUrl: newFootageUrl } : s
+            s.id === sceneId ? { ...s, footageUrl: newFootageUrl, isVideo: useVideoPlaceholders ? true : undefined } : s
         ));
         setProgressMessage(errorOccurred ? 'Image updated with placeholder.' : 'Image updated successfully!');
         setProgressValue(100);
@@ -428,6 +436,8 @@ const App: React.FC = () => {
               ttsSupported={typeof window.speechSynthesis !== 'undefined'}
               useAiImages={useAiImages}
               onUseAiImagesChange={setUseAiImages}
+              useVideoPlaceholders={useVideoPlaceholders}
+              onUseVideoPlaceholdersChange={setUseVideoPlaceholders}
               useAiVideo={useAiVideo}
               onUseAiVideoChange={setUseAiVideo}
               apiKeyMissing={apiKeyMissing}
