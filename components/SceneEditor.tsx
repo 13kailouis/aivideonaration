@@ -8,7 +8,7 @@ interface SceneEditorProps {
   onUpdateScene: (sceneId: string, newText: string, newDuration: number) => void;
   onDeleteScene: (sceneId: string) => void;
   onAddScene: () => void;
-  onUpdateSceneImage: (sceneId: string) => Promise<void>; // Make it async
+  onUpdateSceneFootage: (sceneId: string) => Promise<void>; // Make it async
   aspectRatio: AspectRatio; // To pass to image fetch potentially
   isGenerating: boolean; // To disable buttons during global operations
   apiKeyMissing: boolean;
@@ -20,7 +20,7 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
   onUpdateScene,
   onDeleteScene,
   onAddScene,
-  onUpdateSceneImage,
+  onUpdateSceneFootage,
   // aspectRatio, // Not directly used here, but App.tsx might need it for updateSceneImage
   isGenerating,
   apiKeyMissing,
@@ -29,7 +29,7 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
   const [editableSceneId, setEditableSceneId] = useState<string | null>(null);
   const [editText, setEditText] = useState<string>('');
   const [editDuration, setEditDuration] = useState<number>(0);
-  const [isUpdatingImage, setIsUpdatingImage] = useState<string | null>(null); // Store ID of scene whose image is updating
+  const [isUpdatingFootage, setIsUpdatingFootage] = useState<string | null>(null); // Store ID of scene whose footage is updating
 
   const handleEdit = (scene: Scene) => {
     setEditableSceneId(scene.id);
@@ -42,15 +42,15 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
     setEditableSceneId(null);
   };
 
-  const handleImageUpdate = async (sceneId: string) => {
-    setIsUpdatingImage(sceneId);
+  const handleFootageUpdate = async (sceneId: string) => {
+    setIsUpdatingFootage(sceneId);
     try {
-      await onUpdateSceneImage(sceneId);
+      await onUpdateSceneFootage(sceneId);
     } catch (e) {
       // Error is handled by App.tsx's error/warning system
-      console.error("Error in SceneEditor calling onUpdateSceneImage", e);
+      console.error("Error in SceneEditor calling onUpdateSceneFootage", e);
     } finally {
-      setIsUpdatingImage(null);
+      setIsUpdatingFootage(null);
     }
   };
 
@@ -124,27 +124,27 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
                 <div className="flex space-x-2 mt-2 flex-wrap gap-2">
                   <button
                     onClick={() => handleEdit(scene)}
-                    disabled={isGenerating || isUpdatingImage === scene.id}
+                    disabled={isGenerating || isUpdatingFootage === scene.id}
                     className="px-3 py-1.5 text-xs bg-white hover:bg-gray-200 rounded-md text-black disabled:opacity-50"
                   >
                     Edit Scene
                   </button>
                   <button
-                    onClick={() => handleImageUpdate(scene.id)}
-                    disabled={isGenerating || apiKeyMissing || isUpdatingImage === scene.id}
+                    onClick={() => handleFootageUpdate(scene.id)}
+                    disabled={isGenerating || apiKeyMissing || isUpdatingFootage === scene.id}
                     className="px-3 py-1.5 text-xs bg-white hover:bg-gray-200 rounded-md text-black disabled:opacity-50 flex items-center"
                     title={apiKeyMissing && useAiImagesGlobal ? "API Key missing, cannot generate AI image" : (useAiImagesGlobal ? "Refresh AI Image" : "Refresh Placeholder")}
                   >
-                     {isUpdatingImage === scene.id ? (
+                     {isUpdatingFootage === scene.id ? (
                         <SparklesIcon className="w-3 h-3 mr-1 animate-spin" />
                      ) : useAiImagesGlobal && !apiKeyMissing ? (
                         <SparklesIcon className="w-3 h-3 mr-1" />
                      ): null}
-                    {isUpdatingImage === scene.id ? 'Updating...' : (useAiImagesGlobal && !apiKeyMissing ? 'Update AI Image' : 'New Placeholder')}
+                    {isUpdatingFootage === scene.id ? 'Updating...' : (useAiImagesGlobal && !apiKeyMissing ? 'Update AI Image' : 'New Placeholder')}
                   </button>
                   <button
                     onClick={() => onDeleteScene(scene.id)}
-                    disabled={isGenerating || isUpdatingImage === scene.id}
+                    disabled={isGenerating || isUpdatingFootage === scene.id}
                     className="px-3 py-1.5 text-xs bg-red-600 hover:bg-red-700 rounded-md text-white disabled:opacity-50"
                   >
                     Delete Scene

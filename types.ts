@@ -8,14 +8,17 @@ export interface KenBurnsConfig {
   animationDurationS: number;
 }
 
+export type FootageType = 'image' | 'video';
+
 export interface Scene {
   id: string;
   sceneText: string;
   keywords: string[];
   imagePrompt: string; // Added for AI image generation
   duration: number; // in seconds
-  footageUrl: string; // URL to image (can be base64 data URL)
-  kenBurnsConfig: KenBurnsConfig;
+  footageUrl: string; // URL to image or video
+  footageType: FootageType;
+  kenBurnsConfig?: KenBurnsConfig; // Optional for video
 }
 
 export type AspectRatio = '16:9' | '9:16';
