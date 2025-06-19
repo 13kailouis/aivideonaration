@@ -18,7 +18,7 @@ CineSynth transforms text scripts into marketing-ready videos in minutes. Powere
    ```bash
    npm install
    ```
-2. Create a `.env.local` file and set `GEMINI_API_KEY`. Optionally add `PEXELS_API_KEY` for higher quality placeholder images. If the landing page should redirect to another domain when starting the app, set `LAUNCH_URL` to that URL.
+2. Create a `.env.local` file and set `GEMINI_API_KEY`. Placeholder footage now comes from Wikimedia Commons, so no additional API keys are required. If the landing page should redirect to another domain when starting the app, set `LAUNCH_URL` to that URL.
 3. Start the development server
    ```bash
    npm run dev
