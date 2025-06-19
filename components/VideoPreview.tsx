@@ -61,7 +61,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
 
   const sceneTimeoutRef = useRef<number | null>(null);
   const progressIntervalRef = useRef<number | null>(null);
-  const animationTriggerTimeoutRef = useRef<number | null>(null);
+  const animationTriggerFrameRef = useRef<number | null>(null);
 
   const currentScene = scenes[currentSceneIndex];
 
@@ -83,7 +83,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
 
   // Main playback and transition effect
   useEffect(() => {
-    if (animationTriggerTimeoutRef.current) clearTimeout(animationTriggerTimeoutRef.current);
+    if (animationTriggerFrameRef.current !== null) cancelAnimationFrame(animationTriggerFrameRef.current);
     if (sceneTimeoutRef.current) clearTimeout(sceneTimeoutRef.current);
     if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
 
@@ -133,7 +133,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
       return newSlots;
     });
 
-    animationTriggerTimeoutRef.current = window.setTimeout(() => {
+    animationTriggerFrameRef.current = requestAnimationFrame(() => {
       setImageSlots(prevSlots => {
         const newSlots = [...prevSlots] as [ImageSlotState, ImageSlotState];
         if (newSlots[primarySlot].scene?.id === currentScene.id) {
@@ -142,7 +142,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
         }
         return newSlots;
       });
-    }, 50); // Small delay to ensure state update for opacity transition then apply transform
+    });
 
     setElapsedTime(0);
     progressIntervalRef.current = window.setInterval(() => {
@@ -181,7 +181,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
           return newSlots;
         });
 
-        animationTriggerTimeoutRef.current = window.setTimeout(() => {
+        animationTriggerFrameRef.current = requestAnimationFrame(() => {
           setImageSlots(prevSlots => {
             const newSlots = [...prevSlots] as [ImageSlotState, ImageSlotState];
             if (newSlots[secondarySlot].scene?.id === nextScene.id) {
@@ -190,7 +190,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
             }
             return newSlots;
           });
-        }, 50);
+        });
 
         window.setTimeout(() => {
           setCurrentSceneIndex(prevIndex => prevIndex + 1);
@@ -210,7 +210,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
     }, Math.max(200, sceneDurationMs - FADE_DURATION_MS));
 
     return () => { 
-      if (animationTriggerTimeoutRef.current) clearTimeout(animationTriggerTimeoutRef.current);
+      if (animationTriggerFrameRef.current !== null) cancelAnimationFrame(animationTriggerFrameRef.current);
       if (sceneTimeoutRef.current) clearTimeout(sceneTimeoutRef.current);
       if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
     };
