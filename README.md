@@ -10,7 +10,7 @@ CineSynth transforms text scripts into marketing-ready videos in minutes. Powere
 - Automatic editing and subtitle generation
 - Premium: AI‑generated imagery and TTS narration
 - Premium: One-click AI video generation
-- Browser-based WebM to MP4 conversion via ffmpeg.wasm
+- Browser-based WebM video export via ffmpeg.wasm
 - Placeholder footage is pulled as videos directly from Wikimedia Commons, now
   selected randomly from the best search results so each scene has different
   footage when possible
@@ -29,9 +29,6 @@ CineSynth transforms text scripts into marketing-ready videos in minutes. Powere
 
 Development mode automatically provides the required cross-origin isolation headers so ffmpeg.wasm can use `SharedArrayBuffer`. Always run the app via `npm run dev` or `npm run preview` after building.
 
-### Faster MP4 Conversion
-
-By default the browser-based conversion uses the `ultrafast` preset for speed. Edit `services/mp4ConversionService.ts` if you prefer higher quality.
 
 ## Deployment
 
@@ -51,7 +48,7 @@ When deploying to Vercel, create a `vercel.json` file so each request includes t
 }
 ```
 
-This ensures the MP4 conversion works correctly in the hosted app.
+These headers ensure ffmpeg.wasm can run properly in the hosted app.
 
 If the landing page is served separately from the full editor, provide the
 target URL in a `LAUNCH_URL` environment variable. Visitors clicking
