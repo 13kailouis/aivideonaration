@@ -229,6 +229,9 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
         }
       );
 
+      if (webmBlob.size === 0) {
+        throw new Error('Generated video is empty.');
+      }
       setProgressMessage('Finalizing WebM...');
 
       const url = URL.createObjectURL(webmBlob);
@@ -238,8 +241,10 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
       document.body.appendChild(a);
       a.click();
       console.log('Download link clicked.');
-      document.body.removeChild(a);
-      URL.revokeObjectURL(url);
+      setTimeout(() => {
+        document.body.removeChild(a);
+        URL.revokeObjectURL(url);
+      }, 2000);
       setProgressMessage('Video downloaded!');
       setProgressValue(100);
 
