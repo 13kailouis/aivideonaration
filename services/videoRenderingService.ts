@@ -9,7 +9,7 @@ const MAX_VIDEO_HEIGHT_PORTRAIT = 1280;
 // watermark text size relative to canvas height
 const WATERMARK_FONT_HEIGHT_PERCENT = 0.03;
 
-const IMAGE_LOAD_RETRIES = 2; // Reduced for faster failure if needed
+const IMAGE_LOAD_RETRIES = 1; // fewer retries for faster fallback when images fail to load
 const INITIAL_RETRY_DELAY_MS = 300;
 const SUGGESTED_VIDEO_BITRATE = 2500000; // 2.5 Mbps
 const MEDIA_RECORDER_TIMESLICE_MS = 100; // Get data every 100ms
@@ -168,7 +168,7 @@ async function preloadAllImages(
 ): Promise<PreloadedImage[]> {
     onProgress("Preloading images...", 0);
     const results: PreloadedImage[] = [];
-    const concurrency = 3;
+    const concurrency = 5; // higher concurrency to speed up image preloading
     let index = 0;
     let completed = 0;
 

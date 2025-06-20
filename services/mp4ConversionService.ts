@@ -40,6 +40,14 @@ export const convertWebMToMP4 = async (
   ]);
   const data = await ffmpeg.readFile('output.mp4');
 
+  // Clean up temporary files to free memory for subsequent conversions
+  try {
+    await ffmpeg.deleteFile('input.webm');
+    await ffmpeg.deleteFile('output.mp4');
+  } catch {
+    // Ignore errors during cleanup
+  }
+
   if ((ffmpeg as any).off) {
     (ffmpeg as any).off('progress', progressHandler);
   } else if ((ffmpeg as any).removeListener) {
