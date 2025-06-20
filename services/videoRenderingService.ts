@@ -13,6 +13,7 @@ const IMAGE_LOAD_RETRIES = 2; // Reduced for faster failure if needed
 const INITIAL_RETRY_DELAY_MS = 300;
 const SUGGESTED_VIDEO_BITRATE = 2500000; // 2.5 Mbps
 const MEDIA_RECORDER_TIMESLICE_MS = 100; // Get data every 100ms
+const VIDEO_FRAME_CAPTURE_TIME = 0; // seconds - capture first frame
 
 interface VideoRenderOptions {
   includeWatermark: boolean;
@@ -162,6 +163,59 @@ async function loadImageWithRetries(src: string, sceneId: string, sceneIndexForL
   return fallbackImg;
 }
 
+async function loadVideoFrameWithRetries(src: string, sceneId: string, sceneIndexForLog: number): Promise<HTMLImageElement> {
+  for (let attempt = 0; attempt <= IMAGE_LOAD_RETRIES; attempt++) {
+    try {
+      const image = await new Promise<HTMLImageElement>((resolve, reject) => {
+        const video = document.createElement('video');
+        if (!src.startsWith('data:')) {
+          video.crossOrigin = 'anonymous';
+        }
+        video.preload = 'auto';
+        video.muted = true;
+        video.onloadeddata = () => {
+          try {
+            const canvas = document.createElement('canvas');
+            canvas.width = video.videoWidth || 1;
+            canvas.height = video.videoHeight || 1;
+            const ctx = canvas.getContext('2d');
+            if (!ctx) throw new Error('Failed to get canvas context for video frame');
+            ctx.drawImage(video, 0, 0, canvas.width, canvas.height);
+            const img = new Image();
+            img.src = canvas.toDataURL('image/png');
+            img.onload = () => resolve(img);
+          } catch (err) {
+            reject(err);
+          }
+        };
+        video.onerror = (e) => {
+          const errorMessage = `Failed to load video for scene ${sceneIndexForLog + 1} (ID: ${sceneId}, URL: ${src.substring(0,100)}...), attempt ${attempt + 1}/${IMAGE_LOAD_RETRIES + 1}.`;
+          reject(new Error(errorMessage));
+        };
+        video.currentTime = VIDEO_FRAME_CAPTURE_TIME;
+        video.src = src;
+      });
+      return image;
+    } catch (error) {
+      console.warn(`Video load attempt ${attempt + 1} failed for scene ${sceneIndexForLog + 1}. Error: ${(error as Error).message}`);
+      if (attempt < IMAGE_LOAD_RETRIES) {
+        const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
+        await new Promise(res => setTimeout(res, delay));
+      } else {
+        console.error(`All ${IMAGE_LOAD_RETRIES + 1} attempts to load video for scene ${sceneIndexForLog + 1} failed. Using fallback image.`);
+        const fallbackImg = new Image();
+        fallbackImg.src = FALLBACK_BASE64_IMAGE;
+        await new Promise(res => { fallbackImg.onload = () => res(null); });
+        return fallbackImg;
+      }
+    }
+  }
+  const fallbackImg = new Image();
+  fallbackImg.src = FALLBACK_BASE64_IMAGE;
+  await new Promise(res => { fallbackImg.onload = () => res(null); });
+  return fallbackImg;
+}
+
 async function preloadAllImages(
     scenes: Scene[],
     onProgress: (message: string, value: number) => void
@@ -176,7 +230,9 @@ async function preloadAllImages(
         while (index < scenes.length) {
             const i = index++;
             const scene = scenes[i];
-            const img = await loadImageWithRetries(scene.footageUrl, scene.id, i);
+            const img = scene.footageType === 'video'
+              ? await loadVideoFrameWithRetries(scene.footageUrl, scene.id, i)
+              : await loadImageWithRetries(scene.footageUrl, scene.id, i);
             results.push({ sceneId: scene.id, image: img });
             completed++;
             onProgress(`Preloading images... (${completed}/${scenes.length})`, completed / scenes.length);
