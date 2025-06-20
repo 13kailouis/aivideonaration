@@ -75,6 +75,44 @@ const fetchWikimediaVideo = async (
   }
 };
 
+// Helper to fetch image from Wikimedia Commons
+const fetchWikimediaImage = async (
+  query: string,
+  orientation: 'landscape' | 'portrait',
+  offset: number = 0
+): Promise<string | null> => {
+  const searchUrl =
+    `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*` +
+    `&generator=search&gsrsearch=${encodeURIComponent(query + ' filetype:bitmap')}` +
+    `&gsrlimit=25&gsroffset=${offset}&gsrnamespace=6&prop=imageinfo&iiprop=url|size|mime`;
+  try {
+    const resp = await fetch(searchUrl);
+    if (!resp.ok) return null;
+    const data = await resp.json();
+    const pages = data?.query?.pages;
+    if (!pages) return null;
+    let images: any[] = Object.values(pages);
+    images = images.filter(
+      (v) =>
+        v.imageinfo &&
+        v.imageinfo[0] &&
+        v.imageinfo[0].mime &&
+        v.imageinfo[0].mime.startsWith('image')
+    );
+    images = images.filter((v) => {
+      const info = v.imageinfo[0];
+      return orientation === 'landscape' ? info.width >= info.height : info.height >= info.width;
+    });
+    if (images.length === 0) return null;
+    const candidates = images.slice(0, 10);
+    const choice = candidates[Math.floor(Math.random() * candidates.length)];
+    return choice.imageinfo[0].url as string;
+  } catch (err) {
+    console.warn('Error fetching image from Wikimedia API:', err);
+    return null;
+  }
+};
+
 // Fetches a placeholder image or video URL based on keywords.
 export const fetchPlaceholderFootageUrl = async (
   keywords: string[],
@@ -103,13 +141,22 @@ export const fetchPlaceholderFootageUrl = async (
   for (let i = 0; i < queries.length; i++) {
     const query = queries[i];
     const offset = (baseOffset + i) % 20;
+    const wikiImage = await fetchWikimediaImage(query, orientation, offset);
+    if (wikiImage) {
+      return { url: wikiImage, type: 'image' };
+    }
+  }
+
+  for (let i = 0; i < queries.length; i++) {
+    const query = queries[i];
+    const offset = (baseOffset + i) % 20;
     const wikiVideo = await fetchWikimediaVideo(query, orientation, duration, offset);
     if (wikiVideo) {
       return { url: wikiVideo, type: 'video' };
     }
   }
 
-  return { url: '', type: 'video' };
+  return { url: `https://picsum.photos/${width}/${height}`, type: 'image' };
 };
 
 export interface ProcessNarrationOptions {

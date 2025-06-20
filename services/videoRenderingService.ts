@@ -9,7 +9,7 @@ const MAX_VIDEO_HEIGHT_PORTRAIT = 1280;
 // watermark text size relative to canvas height
 const WATERMARK_FONT_HEIGHT_PERCENT = 0.03;
 
-const IMAGE_LOAD_RETRIES = 2; // Reduced for faster failure if needed
+const IMAGE_LOAD_RETRIES = 1; // fewer retries for faster fallback when images fail to load
 const INITIAL_RETRY_DELAY_MS = 300;
 const SUGGESTED_VIDEO_BITRATE = 2500000; // 2.5 Mbps
 const MEDIA_RECORDER_TIMESLICE_MS = 100; // Get data every 100ms
@@ -17,6 +17,7 @@ const VIDEO_FRAME_CAPTURE_TIME = 0; // seconds - capture first frame
 
 interface VideoRenderOptions {
   includeWatermark: boolean;
+  preferredOutput?: 'auto' | 'webm' | 'mp4';
 }
 
 interface PreloadedImage {
@@ -222,7 +223,7 @@ async function preloadAllImages(
 ): Promise<PreloadedImage[]> {
     onProgress("Preloading images...", 0);
     const results: PreloadedImage[] = [];
-    const concurrency = 3;
+    const concurrency = 5; // higher concurrency to speed up image preloading
     let index = 0;
     let completed = 0;
 
@@ -249,9 +250,9 @@ export const generateWebMFromScenes = (
   scenes: Scene[],
   aspectRatio: AspectRatio,
   options: VideoRenderOptions,
-  onProgressCallback?: (progress: number) => void // Renamed for clarity
+  onProgressCallback?: (progress: number) => void
 ): Promise<Blob> => {
-  console.log('[Video Rendering Service] Starting WebM generation.');
+  console.log('[Video Rendering Service] Starting video generation.');
   return new Promise(async (resolve, reject) => {
     let streamEndedCleanly = false; // Moved declaration to the top of the async function scope
 
@@ -294,17 +295,31 @@ export const generateWebMFromScenes = (
         const stream = canvas.captureStream(VIDEO_FPS);
         console.log(`[Video Rendering Service] Canvas stream captured at ${VIDEO_FPS} FPS.`);
 
-        let mimeType = 'video/webm;codecs=vp8'; // Prioritize VP8 for compatibility
-        if (!MediaRecorder.isTypeSupported(mimeType)) {
-            console.warn(`[Video Rendering Service] VP8 MIME type not supported, trying VP9.`);
-            mimeType = 'video/webm;codecs=vp9';
+        let mimeType: string | null = null;
+
+        const outputPreference = options.preferredOutput || 'auto';
+        if (outputPreference !== 'webm') {
+            const mp4Candidate = 'video/mp4';
+            if (MediaRecorder.isTypeSupported(mp4Candidate)) {
+                mimeType = mp4Candidate;
+            } else if (outputPreference === 'mp4') {
+                console.warn('[Video Rendering Service] MP4 recording not supported, falling back to WebM.');
+            }
+        }
+
+        if (!mimeType) {
+            mimeType = 'video/webm;codecs=vp8';
             if (!MediaRecorder.isTypeSupported(mimeType)) {
-                console.warn(`[Video Rendering Service] VP9 MIME type not supported, trying generic video/webm.`);
-                mimeType = 'video/webm';
+                console.warn(`[Video Rendering Service] VP8 MIME type not supported, trying VP9.`);
+                mimeType = 'video/webm;codecs=vp9';
                 if (!MediaRecorder.isTypeSupported(mimeType)) {
-                    console.error('[Video Rendering Service] No suitable WebM MIME type found.');
-                    if (stream.getTracks) stream.getTracks().forEach(track => track.stop());
-                    return reject(new Error('No suitable WebM MIME type found for MediaRecorder.'));
+                    console.warn(`[Video Rendering Service] VP9 MIME type not supported, trying generic video/webm.`);
+                    mimeType = 'video/webm';
+                    if (!MediaRecorder.isTypeSupported(mimeType)) {
+                        console.error('[Video Rendering Service] No suitable WebM MIME type found.');
+                        if (stream.getTracks) stream.getTracks().forEach(track => track.stop());
+                        return reject(new Error('No suitable WebM MIME type found for MediaRecorder.'));
+                    }
                 }
             }
         }

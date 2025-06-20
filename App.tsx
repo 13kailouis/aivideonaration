@@ -11,7 +11,7 @@ import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY, IS_PREMIUM_USER } from './con
 import { analyzeNarrationWithGemini, generateImageWithImagen } from './services/geminiService.ts';
 import { processNarrationToScenes, fetchPlaceholderFootageUrl } from './services/videoService.ts';
 import { generateWebMFromScenes } from './services/videoRenderingService.ts';
-import { convertWebMToMP4 } from './services/mp4ConversionService.ts';
+import { convertWebMToMP4, preloadFFmpeg } from './services/mp4ConversionService.ts';
 import { generateAIVideo } from './services/aiVideoGenerationService.ts';
 import { SparklesIcon } from './components/IconComponents.tsx';
 
@@ -60,10 +60,12 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
       setError("Critical: Gemini API Key is missing. Please set the API_KEY environment variable for AI features to work. The application will not function correctly without it.");
     }
     if (typeof window.speechSynthesis === 'undefined') {
-      setIsTTSEnabled(false); 
+      setIsTTSEnabled(false);
       console.warn("SpeechSynthesis API not supported in this browser. TTS feature disabled.");
     }
-    
+
+    preloadFFmpeg().catch(err => console.warn('FFmpeg preload failed', err));
+
     return () => {
       if (window.speechSynthesis && window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
@@ -220,10 +222,10 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     }
 
     try {
-      const webmBlob = await generateWebMFromScenes(
+      const videoBlob = await generateWebMFromScenes(
         scenes,
         aspectRatio,
-        { includeWatermark: includeWatermark },
+        { includeWatermark: includeWatermark, preferredOutput: 'auto' },
         (p) => {
           setProgressValue(Math.round(p * 100));
           if (p < 0.01) {
@@ -239,11 +241,16 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
         }
       );
 
-      setProgressMessage('Converting to MP4...');
-      const mp4Blob = await convertWebMToMP4(webmBlob, (convProg) => {
-        setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
-        setProgressValue(100 - Math.round((1 - convProg) * 5));
-      });
+      let mp4Blob: Blob;
+      if (videoBlob.type.startsWith('video/mp4')) {
+        mp4Blob = videoBlob;
+      } else {
+        setProgressMessage('Converting to MP4...');
+        mp4Blob = await convertWebMToMP4(videoBlob, (convProg) => {
+          setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
+          setProgressValue(85 + Math.round(convProg * 15));
+        });
+      }
 
       console.log('MP4 conversion complete. Blob size:', mp4Blob.size, 'bytes');
 
