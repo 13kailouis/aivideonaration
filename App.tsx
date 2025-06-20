@@ -11,7 +11,7 @@ import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY, IS_PREMIUM_USER } from './con
 import { analyzeNarrationWithGemini, generateImageWithImagen } from './services/geminiService.ts';
 import { processNarrationToScenes, fetchPlaceholderFootageUrl } from './services/videoService.ts';
 import { generateWebMFromScenes } from './services/videoRenderingService.ts';
-import { convertWebMToMP4 } from './services/mp4ConversionService.ts';
+import { convertWebMToMP4, preloadFFmpeg } from './services/mp4ConversionService.ts';
 import { generateAIVideo } from './services/aiVideoGenerationService.ts';
 import { SparklesIcon } from './components/IconComponents.tsx';
 
@@ -60,10 +60,12 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
       setError("Critical: Gemini API Key is missing. Please set the API_KEY environment variable for AI features to work. The application will not function correctly without it.");
     }
     if (typeof window.speechSynthesis === 'undefined') {
-      setIsTTSEnabled(false); 
+      setIsTTSEnabled(false);
       console.warn("SpeechSynthesis API not supported in this browser. TTS feature disabled.");
     }
-    
+
+    preloadFFmpeg().catch(err => console.warn('FFmpeg preload failed', err));
+
     return () => {
       if (window.speechSynthesis && window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
