@@ -244,7 +244,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
       setProgressMessage('Converting to MP4...');
       const mp4Blob = await convertWebMToMP4(webmBlob, (convProg) => {
         setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
-        setProgressValue(100 - Math.round((1 - convProg) * 5));
+        setProgressValue(85 + Math.round(convProg * 15));
       });
 
       console.log('MP4 conversion complete. Blob size:', mp4Blob.size, 'bytes');
