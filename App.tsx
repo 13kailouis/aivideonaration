@@ -222,10 +222,10 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     }
 
     try {
-      const webmBlob = await generateWebMFromScenes(
+      const videoBlob = await generateWebMFromScenes(
         scenes,
         aspectRatio,
-        { includeWatermark: includeWatermark },
+        { includeWatermark: includeWatermark, preferredOutput: 'auto' },
         (p) => {
           setProgressValue(Math.round(p * 100));
           if (p < 0.01) {
@@ -241,11 +241,16 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
         }
       );
 
-      setProgressMessage('Converting to MP4...');
-      const mp4Blob = await convertWebMToMP4(webmBlob, (convProg) => {
-        setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
-        setProgressValue(85 + Math.round(convProg * 15));
-      });
+      let mp4Blob: Blob;
+      if (videoBlob.type.startsWith('video/mp4')) {
+        mp4Blob = videoBlob;
+      } else {
+        setProgressMessage('Converting to MP4...');
+        mp4Blob = await convertWebMToMP4(videoBlob, (convProg) => {
+          setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
+          setProgressValue(85 + Math.round(convProg * 15));
+        });
+      }
 
       console.log('MP4 conversion complete. Blob size:', mp4Blob.size, 'bytes');
 
