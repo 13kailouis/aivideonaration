@@ -1,7 +1,8 @@
 
 export const APP_TITLE = "CineSynth";
 export const DEFAULT_ASPECT_RATIO = '16:9';
-export const AVERAGE_WORDS_PER_SECOND = 3; // Fallback if Gemini doesn't provide duration
+// Use a slower reading speed so scene lengths better match spoken narration
+export const AVERAGE_WORDS_PER_SECOND = 2; // Fallback if Gemini doesn't provide duration
 
 export const FALLBACK_FOOTAGE_KEYWORDS = [
   "abstract", "cityscape", "nature", "technology", "office", "landscape", "motion graphics"

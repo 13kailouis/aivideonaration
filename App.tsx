@@ -11,7 +11,6 @@ import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY, IS_PREMIUM_USER } from './con
 import { analyzeNarrationWithGemini, generateImageWithImagen } from './services/geminiService.ts';
 import { processNarrationToScenes, fetchPlaceholderFootageUrl } from './services/videoService.ts';
 import { generateWebMFromScenes } from './services/videoRenderingService.ts';
-import { convertWebMToMP4 } from './services/mp4ConversionService.ts';
 import { generateAIVideo } from './services/aiVideoGenerationService.ts';
 import { SparklesIcon } from './components/IconComponents.tsx';
 
@@ -209,15 +208,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     setProgressMessage('Initializing video rendering...');
     setProgressValue(0);
 
-    if (!window.crossOriginIsolated) {
-      const msg = 'Browser is not cross-origin isolated. MP4 conversion requires cross-origin isolation headers.';
-      console.error(msg);
-      setError(msg);
-      setProgressMessage('Unable to convert video without cross-origin isolation.');
-      setProgressValue(0);
-      setIsRenderingVideo(false);
-      return;
-    }
+    // No cross-origin isolation required when downloading WebM directly
 
     try {
       const webmBlob = await generateWebMFromScenes(
@@ -239,18 +230,12 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
         }
       );
 
-      setProgressMessage('Converting to MP4...');
-      const mp4Blob = await convertWebMToMP4(webmBlob, (convProg) => {
-        setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
-        setProgressValue(100 - Math.round((1 - convProg) * 5));
-      });
+      console.log('WebM rendering complete. Blob size:', webmBlob.size, 'bytes');
 
-      console.log('MP4 conversion complete. Blob size:', mp4Blob.size, 'bytes');
-
-      const url = URL.createObjectURL(mp4Blob);
+      const url = URL.createObjectURL(webmBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `cinesynth_video_${Date.now()}.mp4`;
+      a.download = `cinesynth_video_${Date.now()}.webm`;
       document.body.appendChild(a);
       a.click();
       console.log('Download link clicked.');

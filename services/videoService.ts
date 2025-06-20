@@ -231,5 +231,6 @@ export const processNarrationToScenes = async (
 export const calculateDurationFromText = (text: string): number => {
   if (!text || text.trim() === '') return 4; // Default duration for empty scenes
   const wordCount = text.split(/\s+/).filter(Boolean).length;
+  // Estimate using the configured average words per second
   return Math.ceil(wordCount / AVERAGE_WORDS_PER_SECOND);
 };
