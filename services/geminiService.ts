@@ -1,7 +1,8 @@
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
+import { jsonrepair } from 'jsonrepair';
 import { GeminiSceneResponseItem } from '../types.ts';
-import { API_KEY, GEMINI_TEXT_MODEL, IMAGEN_MODEL } from '../constants.ts';
+import { API_KEY, GEMINI_TEXT_MODEL, IMAGEN_MODEL, AVERAGE_WORDS_PER_SECOND } from '../constants.ts';
 
 let ai: GoogleGenAI | null = null;
 
@@ -73,7 +74,7 @@ export const analyzeNarrationWithGemini = async (
       }
     ]
 
-    If the narration is very short, it can be a single scene. Break longer sentences or paragraphs into multiple logical scenes if appropriate.
+    If the narration is very short, it can be a single scene. For longer narration, aim for roughly one scene every 15-30 words. Always produce at least two scenes when the narration exceeds 30 words. Break sentences or paragraphs logically.
     Ensure the 'imagePrompt' is concise and focuses on creating a compelling and thematically relevant visual.
   `;
 
@@ -114,17 +115,56 @@ export const analyzeNarrationWithGemini = async (
       jsonStr = match[2].trim();
     }
 
-    const parsedData = JSON.parse(jsonStr) as GeminiSceneResponseItem[];
+    let parsedData: GeminiSceneResponseItem[];
+    try {
+      parsedData = JSON.parse(jsonStr) as GeminiSceneResponseItem[];
+    } catch (parseErr) {
+      console.warn('Initial JSON parse failed, attempting repair:', parseErr);
+      try {
+        const repaired = jsonrepair(jsonStr);
+        parsedData = JSON.parse(repaired) as GeminiSceneResponseItem[];
+      } catch (repairErr) {
+        console.error('JSON repair failed:', repairErr);
+        console.error('Raw Gemini response text that caused syntax error:', geminiApiResponse?.text);
+        throw new Error(`The AI returned malformed JSON, causing a parsing error. Details: ${repairErr instanceof Error ? repairErr.message : String(repairErr)}`);
+      }
+    }
 
     if (!Array.isArray(parsedData) || parsedData.some(item =>
         typeof item.sceneText !== 'string' ||
-        !Array.isArray(item.keywords) || // Keywords must be an array
-        typeof item.imagePrompt !== 'string' || 
+        !Array.isArray(item.keywords) ||
+        typeof item.imagePrompt !== 'string' ||
         typeof item.duration !== 'number' ||
         item.keywords.some(k => typeof k !== 'string')
     )) {
       console.error("Gemini response does not match expected structure after parsing:", parsedData);
       throw new Error("Invalid data structure received from AI. The AI's response, while valid JSON, did not match the expected format of scene objects (missing or incorrect sceneText, keywords, imagePrompt, or duration).");
+    }
+
+    // Sanitize keywords: keep at most 3 concise words or short phrases
+    parsedData.forEach(item => {
+      if (Array.isArray(item.keywords)) {
+        item.keywords = item.keywords
+          .filter(k => typeof k === 'string' && k.trim())
+          .map(k => k.trim())
+          .slice(0, 3);
+      }
+    });
+
+    if (parsedData.length === 1) {
+      const wordCount = narrationText.split(/\s+/).filter(Boolean).length;
+      if (wordCount > 30) {
+        const sentences = narrationText.split(/(?<=[.!?])\s+/).filter(Boolean);
+        if (sentences.length > 1) {
+          const fallbackScenes: GeminiSceneResponseItem[] = sentences.map(s => ({
+            sceneText: s.trim(),
+            keywords: [],
+            imagePrompt: s.trim().slice(0, 50),
+            duration: Math.ceil(s.split(/\s+/).length / AVERAGE_WORDS_PER_SECOND)
+          }));
+          return fallbackScenes;
+        }
+      }
     }
 
     return parsedData;

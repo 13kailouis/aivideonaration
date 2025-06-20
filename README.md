@@ -10,10 +10,11 @@ CineSynth transforms text scripts into marketing-ready videos in minutes. Powere
 - Automatic editing and subtitle generation
 - Premium: AI‑generated imagery and TTS narration
 - Premium: One-click AI video generation
-- Browser-based WebM to MP4 conversion via ffmpeg.wasm
+- Browser-based WebM download, no MP4 conversion needed
 - Placeholder footage is pulled as videos directly from Wikimedia Commons, now
   selected randomly from the best search results so each scene has different
   footage when possible
+- Automatic JSON repair when Gemini returns slightly malformed output
 
 ## Getting Started
 
@@ -27,15 +28,15 @@ CineSynth transforms text scripts into marketing-ready videos in minutes. Powere
    npm run dev
    ```
 
-Development mode automatically provides the required cross-origin isolation headers so ffmpeg.wasm can use `SharedArrayBuffer`. Always run the app via `npm run dev` or `npm run preview` after building.
+Development mode automatically provided cross-origin isolation headers for the previous MP4 conversion step. Since downloads are now WebM-only, this is no longer required, but running with `npm run dev` or `npm run preview` is still recommended.
 
-### Faster MP4 Conversion
+### Download Format
 
-By default the browser-based conversion uses the `ultrafast` preset for speed. Edit `services/mp4ConversionService.ts` if you prefer higher quality.
+The generated video downloads directly as WebM. If you need MP4, you can still convert manually using `services/mp4ConversionService.ts` and ffmpeg.wasm.
 
 ## Deployment
 
-When deploying to Vercel, create a `vercel.json` file so each request includes the cross-origin headers needed by ffmpeg.wasm:
+If you plan to enable MP4 conversion via ffmpeg.wasm, create a `vercel.json` file so each request includes the cross-origin headers required by ffmpeg:
 
 ```json
 {
@@ -51,7 +52,7 @@ When deploying to Vercel, create a `vercel.json` file so each request includes t
 }
 ```
 
-This ensures the MP4 conversion works correctly in the hosted app.
+These headers were previously required for MP4 conversion. They can be omitted if you only use WebM downloads.
 
 If the landing page is served separately from the full editor, provide the
 target URL in a `LAUNCH_URL` environment variable. Visitors clicking

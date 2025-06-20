@@ -357,7 +357,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
           aria-live="polite"
         >
           <DownloadIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-          {isDownloading ? 'Rendering Video...' : 'Download Video'}
+          {isDownloading ? 'Rendering Video...' : 'Download WebM'}
         </button>
       </div>
     </div>
