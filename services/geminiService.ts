@@ -1,7 +1,7 @@
 
 import { GoogleGenAI, GenerateContentResponse } from "@google/genai";
 import { GeminiSceneResponseItem } from '../types.ts';
-import { API_KEY, GEMINI_TEXT_MODEL, IMAGEN_MODEL } from '../constants.ts';
+import { API_KEY, GEMINI_TEXT_MODEL, IMAGEN_MODEL, AVERAGE_WORDS_PER_SECOND } from '../constants.ts';
 
 let ai: GoogleGenAI | null = null;
 
@@ -73,7 +73,7 @@ export const analyzeNarrationWithGemini = async (
       }
     ]
 
-    If the narration is very short, it can be a single scene. Break longer sentences or paragraphs into multiple logical scenes if appropriate.
+    If the narration is very short, it can be a single scene. For longer narration, aim for roughly one scene every 15-30 words. Always produce at least two scenes when the narration exceeds 30 words. Break sentences or paragraphs logically.
     Ensure the 'imagePrompt' is concise and focuses on creating a compelling and thematically relevant visual.
   `;
 
@@ -125,6 +125,22 @@ export const analyzeNarrationWithGemini = async (
     )) {
       console.error("Gemini response does not match expected structure after parsing:", parsedData);
       throw new Error("Invalid data structure received from AI. The AI's response, while valid JSON, did not match the expected format of scene objects (missing or incorrect sceneText, keywords, imagePrompt, or duration).");
+    }
+
+    if (parsedData.length === 1) {
+      const wordCount = narrationText.split(/\s+/).filter(Boolean).length;
+      if (wordCount > 30) {
+        const sentences = narrationText.split(/(?<=[.!?])\s+/).filter(Boolean);
+        if (sentences.length > 1) {
+          const fallbackScenes: GeminiSceneResponseItem[] = sentences.map(s => ({
+            sceneText: s.trim(),
+            keywords: [],
+            imagePrompt: s.trim().slice(0, 50),
+            duration: Math.ceil(s.split(/\s+/).length / AVERAGE_WORDS_PER_SECOND)
+          }));
+          return fallbackScenes;
+        }
+      }
     }
 
     return parsedData;
