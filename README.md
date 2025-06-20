@@ -14,6 +14,7 @@ CineSynth transforms text scripts into marketing-ready videos in minutes. Powere
 - Placeholder footage is pulled as videos directly from Wikimedia Commons, now
   selected randomly from the best search results so each scene has different
   footage when possible
+- Automatic JSON repair when Gemini returns slightly malformed output
 
 ## Getting Started
 
