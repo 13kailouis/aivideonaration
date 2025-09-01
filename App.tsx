@@ -14,6 +14,7 @@ import { generateWebMFromScenes } from './services/videoRenderingService.ts';
 import { convertWebMToMP4 } from './services/mp4ConversionService.ts';
 import { generateAIVideo } from './services/aiVideoGenerationService.ts';
 import { SparklesIcon } from './components/IconComponents.tsx';
+import { generateSpeechAudio } from './services/ttsService.ts';
 
 const premiumUser = IS_PREMIUM_USER;
 
@@ -36,7 +37,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
 
   const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(premiumUser);
   const [ttsPlaybackStatus, setTTSPlaybackStatus] = useState<'idle' | 'playing' | 'paused' | 'ended'>('idle');
-  const currentSpeechRef = useRef<SpeechSynthesisUtterance | null>(null);
+  const ttsAudioRef = useRef<HTMLAudioElement | null>(null);
   const analysisCacheRef = useRef<GeminiSceneResponseItem[] | null>(null);
 
   const showPreview = scenes.length > 0 || isGeneratingScenes || isRenderingVideo;
@@ -57,16 +58,13 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
   useEffect(() => {
     if (!API_KEY) {
       setApiKeyMissing(true);
+      setIsTTSEnabled(false);
       setError("Critical: Gemini API Key is missing. Please set the API_KEY environment variable for AI features to work. The application will not function correctly without it.");
     }
-    if (typeof window.speechSynthesis === 'undefined') {
-      setIsTTSEnabled(false); 
-      console.warn("SpeechSynthesis API not supported in this browser. TTS feature disabled.");
-    }
-    
     return () => {
-      if (window.speechSynthesis && window.speechSynthesis.speaking) {
-        window.speechSynthesis.cancel();
+      if (ttsAudioRef.current) {
+        ttsAudioRef.current.pause();
+        ttsAudioRef.current = null;
       }
     };
   }, []);
@@ -188,7 +186,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
       }, 2500);
 
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred during scene generation.';
+      const errorMessage = err instanceof Error ? err.message : String(err || 'Unknown error during scene generation.');
       console.error("Error generating scenes:", err);
       setError(errorMessage);
       setProgressMessage(`Error: ${errorMessage.substring(0,100)}...`); 
@@ -239,8 +237,15 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
         }
       );
 
+      let narrationAudio: Blob | undefined = undefined;
+      if (isTTSEnabled) {
+        setProgressMessage('Generating narration audio...');
+        const narrationTextCombined = scenes.map(s => s.sceneText).join(' ');
+        narrationAudio = await generateSpeechAudio(narrationTextCombined);
+      }
+
       setProgressMessage('Converting to MP4...');
-      const mp4Blob = await convertWebMToMP4(webmBlob, (convProg) => {
+      const mp4Blob = await convertWebMToMP4(webmBlob, narrationAudio, (convProg) => {
         setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
         setProgressValue(100 - Math.round((1 - convProg) * 5));
       });
@@ -265,7 +270,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
       }, 3000);
 
     } catch (err) {
-      const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred while rendering video.';
+      const errorMessage = err instanceof Error ? err.message : String(err || 'Unknown error while rendering video.');
       console.error("Error rendering video:", err);
       setError(errorMessage);
       if (!window.crossOriginIsolated) {
@@ -279,23 +284,31 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
   };
   
   // TTS Handlers (no change in logic, just ensuring they are present)
-  const handleTTSPlay = (text: string) => {
-    if (!isTTSEnabled || typeof window.speechSynthesis === 'undefined') return;
-    if (window.speechSynthesis.speaking || window.speechSynthesis.pending) window.speechSynthesis.cancel();
-    currentSpeechRef.current = new SpeechSynthesisUtterance(text);
-    currentSpeechRef.current.onstart = () => setTTSPlaybackStatus('playing');
-    currentSpeechRef.current.onpause = () => setTTSPlaybackStatus('paused'); 
-    currentSpeechRef.current.onresume = () => setTTSPlaybackStatus('playing'); 
-    currentSpeechRef.current.onend = () => { setTTSPlaybackStatus('ended'); currentSpeechRef.current = null; };
-    currentSpeechRef.current.onerror = (event: SpeechSynthesisErrorEvent) => {
-        if (event.error !== 'interrupted') console.error('SpeechSynthesisUtterance Error:', event.error);
-        setTTSPlaybackStatus('idle'); currentSpeechRef.current = null;
-    };
-    window.speechSynthesis.speak(currentSpeechRef.current);
+  const handleTTSPlay = async (text: string) => {
+    if (!isTTSEnabled) return;
+    if (ttsAudioRef.current) {
+      ttsAudioRef.current.pause();
+      ttsAudioRef.current = null;
+    }
+    try {
+      setTTSPlaybackStatus('playing');
+      const blob = await generateSpeechAudio(text);
+      const url = URL.createObjectURL(blob);
+      const audio = new Audio(url);
+      ttsAudioRef.current = audio;
+      audio.onended = () => { setTTSPlaybackStatus('ended'); URL.revokeObjectURL(url); ttsAudioRef.current = null; };
+      audio.onpause = () => setTTSPlaybackStatus('paused');
+      audio.onplay = () => setTTSPlaybackStatus('playing');
+      audio.onerror = () => { setTTSPlaybackStatus('idle'); URL.revokeObjectURL(url); ttsAudioRef.current = null; };
+      await audio.play();
+    } catch (err) {
+      console.error('TTS playback error:', err);
+      setTTSPlaybackStatus('idle');
+    }
   };
-  const handleTTSPause = () => { if (window.speechSynthesis?.speaking) window.speechSynthesis.pause(); };
-  const handleTTSResume = () => { if (window.speechSynthesis?.paused) window.speechSynthesis.resume(); };
-  const handleTTSStop = () => { if (window.speechSynthesis) window.speechSynthesis.cancel(); setTTSPlaybackStatus('idle'); currentSpeechRef.current = null; };
+  const handleTTSPause = () => { if (ttsAudioRef.current && !ttsAudioRef.current.paused) ttsAudioRef.current.pause(); };
+  const handleTTSResume = () => { if (ttsAudioRef.current && ttsAudioRef.current.paused) ttsAudioRef.current.play(); };
+  const handleTTSStop = () => { if (ttsAudioRef.current) { ttsAudioRef.current.pause(); ttsAudioRef.current.currentTime = 0; ttsAudioRef.current = null; } setTTSPlaybackStatus('idle'); };
   const toggleTTSEnabled = (enabled: boolean) => { setIsTTSEnabled(enabled); if (!enabled) handleTTSStop(); };
 
   // Scene Editor Handlers
@@ -441,7 +454,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
               onIncludeWatermarkChange={setIncludeWatermark}
               isTTSEnabled={isTTSEnabled}
               onTTSEnabledChange={toggleTTSEnabled}
-              ttsSupported={typeof window.speechSynthesis !== 'undefined'}
+              ttsSupported={!apiKeyMissing}
               useAiImages={useAiImages}
               onUseAiImagesChange={setUseAiImages}
               useAiVideo={useAiVideo}
