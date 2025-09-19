@@ -138,6 +138,9 @@ export const analyzeNarrationWithGemini = async (
         if (error.message.includes("API key not valid") || error.message.includes("PERMISSION_DENIED")){
             throw new Error("Invalid Gemini API Key. Please check your API_KEY environment variable.");
         }
+        if (error.message.includes("NOT_FOUND") || error.message.includes("not found")) {
+            throw new Error("The configured Gemini model is unavailable. Please update GEMINI_TEXT_MODEL to a supported model.");
+        }
         if (error.message.includes("RESOURCE_EXHAUSTED") || error.message.includes("429")) {
             throw new Error("You've exceeded your Gemini API quota for text generation. Please check your Google AI plan and billing details.");
         }
