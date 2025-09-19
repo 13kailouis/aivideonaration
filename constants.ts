@@ -8,7 +8,8 @@ export const FALLBACK_FOOTAGE_KEYWORDS = [
 ];
 
 // Gemini model for text analysis
-export const GEMINI_TEXT_MODEL = 'gemini-2.5-flash-preview-04-17';
+// Use a generally available model rather than a short-lived preview build.
+export const GEMINI_TEXT_MODEL = 'gemini-1.5-flash';
 // Imagen model for image generation
 export const IMAGEN_MODEL = 'imagen-3.0-generate-002';
 
