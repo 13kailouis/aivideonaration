@@ -326,7 +326,16 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
 
   const handleAddScene = async () => {
     const newSceneId = `scene-new-${Date.now()}`;
-    const placeholder = await fetchPlaceholderFootageUrl(["new scene", "abstract"], aspectRatio, 5, newSceneId);
+    const placeholder = await fetchPlaceholderFootageUrl(
+      {
+        keywords: ["new scene", "abstract"],
+        sceneText: "New scene text...",
+        imagePrompt: "Abstract background for a new scene"
+      },
+      aspectRatio,
+      5,
+      newSceneId
+    );
     const newScene: Scene = {
       id: newSceneId,
       sceneText: "New scene text...",
@@ -361,14 +370,32 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
                 sceneToUpdate.footageType = 'image';
             } else {
                 addWarning(result.userFriendlyError || `AI image failed for scene ${sceneId}. Using new placeholder.`);
-                const placeholder = await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneToUpdate.duration, sceneId + "-retry");
+                const placeholder = await fetchPlaceholderFootageUrl(
+                  {
+                    keywords: sceneToUpdate.keywords,
+                    sceneText: sceneToUpdate.sceneText,
+                    imagePrompt: sceneToUpdate.imagePrompt
+                  },
+                  aspectRatio,
+                  sceneToUpdate.duration,
+                  sceneId + "-retry"
+                );
                 newFootageUrl = placeholder.url;
                 sceneToUpdate.footageType = placeholder.type;
                 errorOccurred = true;
             }
         } else {
             setProgressValue(30);
-            const placeholder = await fetchPlaceholderFootageUrl(sceneToUpdate.keywords, aspectRatio, sceneToUpdate.duration, sceneId + "-refresh");
+            const placeholder = await fetchPlaceholderFootageUrl(
+              {
+                keywords: sceneToUpdate.keywords,
+                sceneText: sceneToUpdate.sceneText,
+                imagePrompt: sceneToUpdate.imagePrompt
+              },
+              aspectRatio,
+              sceneToUpdate.duration,
+              sceneId + "-refresh"
+            );
             newFootageUrl = placeholder.url;
             sceneToUpdate.footageType = placeholder.type;
         }
