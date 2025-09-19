@@ -209,14 +209,10 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     setProgressMessage('Initializing video rendering...');
     setProgressValue(0);
 
-    if (!window.crossOriginIsolated) {
-      const msg = 'Browser is not cross-origin isolated. MP4 conversion requires cross-origin isolation headers.';
-      console.error(msg);
-      setError(msg);
-      setProgressMessage('Unable to convert video without cross-origin isolation.');
-      setProgressValue(0);
-      setIsRenderingVideo(false);
-      return;
+    const canConvertToMp4 = window.crossOriginIsolated;
+    if (!canConvertToMp4) {
+      console.warn('Browser is not cross-origin isolated. MP4 conversion will be skipped in favour of WebM download.');
+      addWarning('MP4 conversion is unavailable in this browser session. A WebM file will be downloaded instead.');
     }
 
     try {
@@ -239,18 +235,34 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
         }
       );
 
-      setProgressMessage('Converting to MP4...');
-      const mp4Blob = await convertWebMToMP4(webmBlob, (convProg) => {
-        setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
-        setProgressValue(100 - Math.round((1 - convProg) * 5));
-      });
+      let downloadBlob: Blob = webmBlob;
+      let fileExtension = 'webm';
 
-      console.log('MP4 conversion complete. Blob size:', mp4Blob.size, 'bytes');
+      if (canConvertToMp4) {
+        setProgressMessage('Converting to MP4...');
+        try {
+          const mp4Blob = await convertWebMToMP4(webmBlob, (convProg) => {
+            setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
+            setProgressValue(100 - Math.round((1 - convProg) * 5));
+          });
+          console.log('MP4 conversion complete. Blob size:', mp4Blob.size, 'bytes');
+          downloadBlob = mp4Blob;
+          fileExtension = 'mp4';
+        } catch (conversionError) {
+          console.error('MP4 conversion failed. Falling back to WebM download.', conversionError);
+          addWarning('MP4 conversion failed. Downloading WebM version instead.');
+          setProgressMessage('Preparing WebM download...');
+        }
+      } else {
+        setProgressMessage('Preparing WebM download...');
+      }
 
-      const url = URL.createObjectURL(mp4Blob);
+      setProgressValue(100);
+
+      const url = URL.createObjectURL(downloadBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `cinesynth_video_${Date.now()}.mp4`;
+      a.download = `cinesynth_video_${Date.now()}.${fileExtension}`;
       document.body.appendChild(a);
       a.click();
       console.log('Download link clicked.');
