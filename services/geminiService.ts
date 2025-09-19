@@ -81,7 +81,7 @@ export const analyzeNarrationWithGemini = async (
   for (let attempt = 0; attempt <= retries; attempt++) {
     try {
       geminiApiResponse = await genAI.models.generateContent({
-        model: gemini-2.5-flash,
+        model: GEMINI_TEXT_MODEL,
         contents: prompt,
         config: {
           responseMimeType: "application/json",
