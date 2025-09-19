@@ -35,78 +35,343 @@ const generateSceneKenBurnsConfig = (duration: number): KenBurnsConfig => {
 };
 
 
-// Helper to fetch video from Wikimedia Commons
-const fetchWikimediaVideo = async (
+const STOP_WORDS = new Set([
+  'the', 'and', 'for', 'with', 'from', 'into', 'over', 'under', 'between', 'about', 'around', 'through', 'across',
+  'behind', 'after', 'before', 'into', 'onto', 'off', 'than', 'then', 'this', 'that', 'these', 'those', 'when',
+  'where', 'while', 'your', 'their', 'there', 'have', 'has', 'had', 'will', 'would', 'could', 'should', 'might',
+  'very', 'more', 'some', 'such', 'many', 'much', 'also', 'like', 'just', 'each', 'every', 'being', 'been', 'into',
+  'onto', 'among', 'amid', 'amidst', 'during', 'within', 'without', 'because', 'against', 'toward', 'towards', 'our',
+  'ours', 'his', 'hers', 'their', 'them', 'they', 'you', 'yourself', 'ourselves', 'himself', 'herself', 'itself',
+  'it', 'its', 'we', 'us', 'are', 'was', 'were', 'is', 'am', 'be', 'being', 'been', 'do', 'does', 'did', 'doing',
+  'on', 'in', 'at', 'by', 'to', 'of', 'as', 'a', 'an'
+]);
+
+const GENERIC_MEDIA_TERMS = [
+  'background', 'texture', 'pattern', 'template', 'intro', 'graphic', 'animation', 'loop', 'wallpaper', 'abstract',
+  'backdrop', 'placeholder', 'design', 'illustration'
+];
+
+interface PlaceholderContext {
+  keywords?: string[];
+  sceneText?: string;
+  imagePrompt?: string;
+}
+
+interface WikimediaCandidate {
+  url: string;
+  type: 'video' | 'image';
+  width: number;
+  height: number;
+  duration?: number;
+  title: string;
+  snippet?: string;
+  description?: string;
+}
+
+interface ScoredCandidate extends WikimediaCandidate {
+  score: number;
+  query: string;
+}
+
+const cleanWikiHtml = (value?: string): string => {
+  if (!value) return '';
+  return value
+    .replace(/<span class=\"searchmatch\">/g, '')
+    .replace(/<\/span>/g, '')
+    .replace(/<[^>]*>/g, ' ')
+    .replace(/&quot;/g, '"')
+    .replace(/&amp;/g, '&')
+    .replace(/&apos;/g, "'")
+    .replace(/&lt;/g, '<')
+    .replace(/&gt;/g, '>')
+    .replace(/\s+/g, ' ')
+    .trim();
+};
+
+const sanitizeWord = (word: string): string =>
+  word
+    .toLowerCase()
+    .replace(/[^a-z0-9\-\s]/g, '')
+    .trim();
+
+const extractTokens = (text?: string): string[] => {
+  if (!text) return [];
+  return text
+    .split(/[\s,.;:!?\-]+/)
+    .map(sanitizeWord)
+    .filter(token => token && token.length > 2 && !STOP_WORDS.has(token));
+};
+
+const dedupeStrings = (values: string[]): string[] => {
+  const seen = new Set<string>();
+  const result: string[] = [];
+  for (const value of values) {
+    const key = value.toLowerCase();
+    if (!seen.has(key)) {
+      seen.add(key);
+      result.push(value);
+    }
+  }
+  return result;
+};
+
+const limitWords = (text: string, maxWords = 9): string => {
+  const words = text.trim().split(/\s+/);
+  return words.slice(0, maxWords).join(' ').trim();
+};
+
+const buildContextTerms = (context: PlaceholderContext): string[] => {
+  const terms: string[] = [];
+  if (context.keywords) {
+    for (const keyword of context.keywords) {
+      const sanitized = sanitizeWord(keyword);
+      if (sanitized) terms.push(sanitized);
+      terms.push(...extractTokens(keyword));
+    }
+  }
+  terms.push(...extractTokens(context.sceneText));
+  terms.push(...extractTokens(context.imagePrompt));
+  return dedupeStrings(terms).slice(0, 30);
+};
+
+const buildSearchQueries = (context: PlaceholderContext): string[] => {
+  const queries: string[] = [];
+  const keywordPhrases = (context.keywords || [])
+    .map(k => limitWords(k))
+    .filter(Boolean);
+
+  if (keywordPhrases.length >= 2) {
+    queries.push(limitWords(keywordPhrases.slice(0, 3).join(' ')));
+  }
+  queries.push(...keywordPhrases);
+
+  const keywords = dedupeStrings(keywordPhrases);
+  for (let i = 0; i < Math.min(keywords.length, 4); i++) {
+    for (let j = i + 1; j < Math.min(keywords.length, 5); j++) {
+      queries.push(limitWords(`${keywords[i]} ${keywords[j]}`));
+    }
+  }
+
+  const contextFragments: string[] = [];
+  if (context.imagePrompt) {
+    const fragments = context.imagePrompt.split(/[\.|\n|;|\-]/).map(f => limitWords(f));
+    contextFragments.push(...fragments);
+  }
+  if (context.sceneText) {
+    const sentences = context.sceneText.split(/[.?!]/).map(s => limitWords(s));
+    contextFragments.push(...sentences);
+  }
+
+  queries.push(...contextFragments.filter(f => f && f.split(/\s+/).length >= 2));
+
+  const contextTerms = buildContextTerms(context);
+  for (let size = Math.min(4, contextTerms.length); size >= 2; size--) {
+    for (let start = 0; start <= contextTerms.length - size && start < 6; start++) {
+      const phrase = contextTerms.slice(start, start + size).join(' ');
+      queries.push(limitWords(phrase));
+    }
+  }
+
+  if (contextTerms.length) {
+    queries.push(limitWords(`cinematic ${contextTerms.slice(0, 3).join(' ')}`));
+    queries.push(limitWords(`dynamic footage of ${contextTerms.slice(0, 3).join(' ')}`));
+  }
+
+  queries.push(...FALLBACK_FOOTAGE_KEYWORDS.map(k => `cinematic ${k}`));
+
+  return dedupeStrings(
+    queries
+      .map(q => q.replace(/\s+/g, ' ').trim())
+      .filter(q => q && q.length >= 3)
+  ).slice(0, 18);
+};
+
+const fetchWikimediaMediaCandidates = async (
   query: string,
   orientation: 'landscape' | 'portrait',
-  duration?: number,
+  type: 'video' | 'image',
   offset: number = 0
-): Promise<string | null> => {
-  const searchUrl =
+): Promise<WikimediaCandidate[]> => {
+  const baseUrl =
     `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*` +
-    `&generator=search&gsrsearch=${encodeURIComponent(query + ' filetype:video')}` +
-    `&gsrlimit=25&gsroffset=${offset}&gsrnamespace=6&prop=imageinfo&iiprop=url|size|duration|mime`;
+    `&generator=search&gsrsearch=${encodeURIComponent(query)}` +
+    `&gsrnamespace=6&gsrprop=snippet|titlesnippet&gsrsort=relevance&gsrlimit=30&gsroffset=${offset}` +
+    `&prop=imageinfo|info&inprop=url|displaytitle` +
+    `&iiprop=url|size|mime|extmetadata${type === 'video' ? '|duration' : ''}`;
+
   try {
-    const resp = await fetch(searchUrl);
-    if (!resp.ok) return null;
+    const resp = await fetch(baseUrl);
+    if (!resp.ok) return [];
     const data = await resp.json();
     const pages = data?.query?.pages;
-    if (!pages) return null;
-    let videos: any[] = Object.values(pages);
-    videos = videos.filter(v => v.imageinfo && v.imageinfo[0] && v.imageinfo[0].mime && v.imageinfo[0].mime.startsWith('video'));
-    videos = videos.filter(v => {
-      const info = v.imageinfo[0];
-      return orientation === 'landscape' ? info.width >= info.height : info.height >= info.width;
-    });
-    if (videos.length === 0) return null;
-    if (duration) {
-      videos.sort((a, b) => {
-        const ad = Math.abs((a.imageinfo[0].duration || 0) - duration);
-        const bd = Math.abs((b.imageinfo[0].duration || 0) - duration);
-        return ad - bd;
+    if (!pages) return [];
+    const results: WikimediaCandidate[] = [];
+    const pageEntries = Object.values(pages) as any[];
+    for (const page of pageEntries) {
+      const info = page?.imageinfo?.[0];
+      if (!info || typeof info.url !== 'string' || typeof info.mime !== 'string') continue;
+      const isVideo = info.mime.startsWith('video');
+      if (type === 'video' && !isVideo) continue;
+      if (type === 'image' && isVideo) continue;
+      if (orientation === 'landscape' && info.width < info.height) continue;
+      if (orientation === 'portrait' && info.height < info.width) continue;
+
+      const durationValue = info.duration;
+      let numericDuration: number | undefined = undefined;
+      if (typeof durationValue === 'number') {
+        numericDuration = durationValue;
+      } else if (typeof durationValue === 'string') {
+        const parsed = parseFloat(durationValue);
+        if (!Number.isNaN(parsed)) numericDuration = parsed;
+      }
+
+      const description =
+        cleanWikiHtml(
+          info.extmetadata?.ImageDescription?.value ||
+          info.extmetadata?.ObjectName?.value ||
+          info.extmetadata?.Description?.value
+        );
+
+      results.push({
+        url: info.url,
+        type: isVideo ? 'video' : 'image',
+        width: info.width,
+        height: info.height,
+        duration: numericDuration,
+        title: cleanWikiHtml(page?.title || ''),
+        snippet: cleanWikiHtml(page?.snippet || ''),
+        description
       });
     }
-    const candidates = videos.slice(0, 5);
-    const choice = candidates[Math.floor(Math.random() * candidates.length)];
-    return choice.imageinfo[0].url as string;
+    return results;
   } catch (err) {
     console.warn('Error fetching from Wikimedia API:', err);
-    return null;
+    return [];
   }
 };
 
-// Fetches a placeholder image or video URL based on keywords.
+const scoreCandidate = (
+  candidate: WikimediaCandidate,
+  contextTerms: string[],
+  query: string,
+  desiredDuration?: number
+): number => {
+  const combinedText = `${candidate.title} ${candidate.description || ''} ${candidate.snippet || ''}`.toLowerCase();
+  const normalizedQuery = query.toLowerCase();
+  let score = 0;
+  let matchedTerms = 0;
+
+  if (normalizedQuery && combinedText.includes(normalizedQuery)) {
+    score += 9;
+  } else {
+    const queryWords = normalizedQuery.split(/\s+/).filter(Boolean);
+    for (const word of queryWords) {
+      if (word.length < 3) continue;
+      if (combinedText.includes(word)) {
+        matchedTerms += 1;
+        score += 2.5;
+      }
+    }
+  }
+
+  for (const term of contextTerms) {
+    const normalized = term.toLowerCase();
+    if (!normalized || normalized.length < 3) continue;
+    if (combinedText.includes(normalized)) {
+      matchedTerms += 1;
+      score += normalized.split(/\s+/).length > 1 ? 6 : 3;
+    }
+  }
+
+  if (candidate.type === 'video') {
+    score += 1.5;
+  }
+
+  if (desiredDuration && candidate.duration) {
+    const diff = Math.abs(candidate.duration - desiredDuration);
+    score += Math.max(0, 3 - diff / 2);
+  }
+
+  const loweredTitle = candidate.title.toLowerCase();
+  for (const generic of GENERIC_MEDIA_TERMS) {
+    if (loweredTitle.includes(generic) || combinedText.includes(generic)) {
+      score -= 2;
+    }
+  }
+
+  if (matchedTerms === 0) {
+    score -= 2.5;
+  }
+
+  return score;
+};
+
+// Fetches a placeholder image or video URL based on contextual information for a scene.
 export const fetchPlaceholderFootageUrl = async (
-  keywords: string[],
+  contextInput: PlaceholderContext | string[],
   aspectRatio: AspectRatio,
   duration?: number,
-  sceneId?: string // Optional sceneId for more unique placeholders if needed
+  sceneId?: string
 ): Promise<{ url: string; type: 'video' | 'image' }> => {
-  const width = aspectRatio === '16:9' ? 960 : 540; // kept for potential future use
-  const height = aspectRatio === '16:9' ? 540 : 960;
+  const context: PlaceholderContext = Array.isArray(contextInput)
+    ? { keywords: contextInput }
+    : { ...contextInput };
+
+  if (!context.keywords || context.keywords.length === 0) {
+    const randomFallback = FALLBACK_FOOTAGE_KEYWORDS[hashString(sceneId || `${Date.now()}`) % FALLBACK_FOOTAGE_KEYWORDS.length];
+    context.keywords = [randomFallback];
+  }
 
   const orientation = aspectRatio === '16:9' ? 'landscape' : 'portrait';
-  const baseOffset = sceneId ? hashString(sceneId) % 20 : Math.floor(Math.random() * 20);
+  const baseOffset = sceneId ? hashString(sceneId) % 40 : Math.floor(Math.random() * 40);
 
-  const queries: string[] = [];
-  if (keywords && keywords.length > 0) {
-    const joined = keywords.join(' ');
-    queries.push(joined);
-    for (const kw of keywords) {
-      if (!queries.includes(kw)) queries.push(kw);
-    }
-  } else {
-    queries.push(FALLBACK_FOOTAGE_KEYWORDS[Math.floor(Math.random() * FALLBACK_FOOTAGE_KEYWORDS.length)]);
+  const contextTerms = buildContextTerms(context);
+  const queries = buildSearchQueries(context);
+  if (queries.length === 0) {
+    queries.push(`cinematic ${context.keywords?.[0] || 'storytelling visuals'}`);
   }
-  queries.push('stock footage');
 
-  for (let i = 0; i < queries.length; i++) {
-    const query = queries[i];
-    const offset = (baseOffset + i) % 20;
-    const wikiVideo = await fetchWikimediaVideo(query, orientation, duration, offset);
-    if (wikiVideo) {
-      return { url: wikiVideo, type: 'video' };
+  let bestCandidate: ScoredCandidate | null = null;
+
+  const considerCandidates = (candidates: WikimediaCandidate[], query: string) => {
+    for (const candidate of candidates) {
+      const score = scoreCandidate(candidate, contextTerms, query, duration);
+      if (!bestCandidate || score > bestCandidate.score) {
+        bestCandidate = { ...candidate, score, query };
+      }
     }
+  };
+
+  const maxQueriesToTry = Math.min(queries.length, 12);
+  for (let i = 0; i < maxQueriesToTry; i++) {
+    const query = queries[i];
+    const offset = (baseOffset + i * 7) % 60;
+
+    const videoCandidates = await fetchWikimediaMediaCandidates(query, orientation, 'video', offset);
+    considerCandidates(videoCandidates, query);
+    if (bestCandidate && bestCandidate.type === 'video' && bestCandidate.score >= 8) {
+      break;
+    }
+
+    const imageCandidates = await fetchWikimediaMediaCandidates(query, orientation, 'image', offset);
+    considerCandidates(imageCandidates, query);
+    if (bestCandidate && bestCandidate.score >= 9) {
+      break;
+    }
+  }
+
+  if (bestCandidate) {
+    return { url: bestCandidate.url, type: bestCandidate.type };
+  }
+
+  const fallbackQuery = `cinematic ${FALLBACK_FOOTAGE_KEYWORDS[baseOffset % FALLBACK_FOOTAGE_KEYWORDS.length]}`;
+  const fallbackVideo = await fetchWikimediaMediaCandidates(fallbackQuery, orientation, 'video', baseOffset % 10);
+  if (fallbackVideo.length > 0) {
+    return { url: fallbackVideo[0].url, type: 'video' };
+  }
+  const fallbackImage = await fetchWikimediaMediaCandidates(fallbackQuery, orientation, 'image', baseOffset % 10);
+  if (fallbackImage.length > 0) {
+    return { url: fallbackImage[0].url, type: 'image' };
   }
 
   return { url: '', type: 'video' };
@@ -174,7 +439,12 @@ export const processNarrationToScenes = async (
         imageGenError = imagenResult.userFriendlyError || 'AI image generation failed. Using placeholder.';
         console.warn(imageGenError, "Prompt:", item.imagePrompt);
         onProgress(imageGenError, (index + 1) / scenesToProcess.length, 'ai_image', index + 1, scenesToProcess.length, imageGenError);
-        const placeholder = await fetchPlaceholderFootageUrl(item.keywords, aspectRatio, validatedDuration, sceneId);
+        const placeholder = await fetchPlaceholderFootageUrl(
+          { keywords: item.keywords, sceneText: item.sceneText, imagePrompt: item.imagePrompt },
+          aspectRatio,
+          validatedDuration,
+          sceneId
+        );
         footageUrl = placeholder.url;
         footageType = placeholder.type;
       }
@@ -186,7 +456,12 @@ export const processNarrationToScenes = async (
         index + 1,
         scenesToProcess.length
       );
-      const placeholder = await fetchPlaceholderFootageUrl(item.keywords, aspectRatio, validatedDuration, sceneId);
+      const placeholder = await fetchPlaceholderFootageUrl(
+        { keywords: item.keywords, sceneText: item.sceneText, imagePrompt: item.imagePrompt },
+        aspectRatio,
+        validatedDuration,
+        sceneId
+      );
       footageUrl = placeholder.url;
       footageType = placeholder.type;
     }
