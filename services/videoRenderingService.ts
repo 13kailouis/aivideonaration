@@ -33,6 +33,12 @@ interface PreloadedImage {
   image: HTMLImageElement;
 }
 
+export interface GeneratedVideoResult {
+  blob: Blob;
+  mimeType: string;
+  format: 'webm' | 'mp4';
+}
+
 const FALLBACK_BASE64_IMAGE =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO9z9zsAAAAASUVORK5CYII='; // 1x1 gray pixel
 
@@ -259,7 +265,7 @@ const generateWebMWithWebCodecs = (
   aspectRatio: AspectRatio,
   options: VideoRenderOptions,
   onProgressCallback?: (progress: number) => void
-): Promise<Blob> => {
+): Promise<GeneratedVideoResult> => {
   console.log('[Video Rendering Service] Using WebCodecs accelerated renderer.');
   return new Promise(async (resolve, reject) => {
     let encoder: any = null;
@@ -358,7 +364,8 @@ const generateWebMWithWebCodecs = (
       muxer.finalize();
 
       if (onProgressCallback) onProgressCallback(1);
-      resolve(new Blob([muxerTarget.buffer], { type: 'video/webm' }));
+      const blob = new Blob([muxerTarget.buffer], { type: 'video/webm' });
+      resolve({ blob, mimeType: blob.type || 'video/webm', format: 'webm' });
     } catch (error) {
       reject(error instanceof Error ? error : new Error(String(error)));
     } finally {
@@ -379,8 +386,8 @@ const generateWebMWithMediaRecorder = (
   aspectRatio: AspectRatio,
   options: VideoRenderOptions,
   onProgressCallback?: (progress: number) => void // Renamed for clarity
-): Promise<Blob> => {
-  console.log('[Video Rendering Service] Starting WebM generation.');
+): Promise<GeneratedVideoResult> => {
+  console.log('[Video Rendering Service] Starting MediaRecorder-based rendering.');
   return new Promise(async (resolve, reject) => {
     let streamEndedCleanly = false; // Moved declaration to the top of the async function scope
 
@@ -423,27 +430,38 @@ const generateWebMWithMediaRecorder = (
         const stream = canvas.captureStream(VIDEO_FPS);
         console.log(`[Video Rendering Service] Canvas stream captured at ${VIDEO_FPS} FPS.`);
 
-        let mimeType = 'video/webm;codecs=vp8'; // Prioritize VP8 for compatibility
-        if (!MediaRecorder.isTypeSupported(mimeType)) {
-            console.warn(`[Video Rendering Service] VP8 MIME type not supported, trying VP9.`);
-            mimeType = 'video/webm;codecs=vp9';
-            if (!MediaRecorder.isTypeSupported(mimeType)) {
-                console.warn(`[Video Rendering Service] VP9 MIME type not supported, trying generic video/webm.`);
-                mimeType = 'video/webm';
-                if (!MediaRecorder.isTypeSupported(mimeType)) {
-                    console.error('[Video Rendering Service] No suitable WebM MIME type found.');
-                    if (stream.getTracks) stream.getTracks().forEach(track => track.stop());
-                    return reject(new Error('No suitable WebM MIME type found for MediaRecorder.'));
-                }
+        const mimeTypeCandidates: Array<{ type: string; format: 'webm' | 'mp4' }> = [
+            { type: 'video/webm;codecs=vp9', format: 'webm' },
+            { type: 'video/webm;codecs=vp8', format: 'webm' },
+            { type: 'video/webm', format: 'webm' },
+            { type: 'video/mp4;codecs="avc1.42E01E, mp4a.40.2"', format: 'mp4' },
+            { type: 'video/mp4;codecs="avc1.4D401E, mp4a.40.2"', format: 'mp4' },
+            { type: 'video/mp4', format: 'mp4' },
+        ];
+
+        let chosenMimeType = '';
+        let chosenFormat: 'webm' | 'mp4' = 'webm';
+        for (const candidate of mimeTypeCandidates) {
+            if (MediaRecorder.isTypeSupported(candidate.type)) {
+                chosenMimeType = candidate.type;
+                chosenFormat = candidate.format;
+                break;
             }
         }
-        console.log(`[Video Rendering Service] Using MIME type: ${mimeType}`);
 
-        mediaRecorder = new MediaRecorder(stream, {
-            mimeType,
-            videoBitsPerSecond: SUGGESTED_VIDEO_BITRATE
-        });
-        console.log(`[Video Rendering Service] MediaRecorder initialized with bitrate: ${SUGGESTED_VIDEO_BITRATE}`);
+        if (!chosenMimeType) {
+            console.warn('[Video Rendering Service] No preferred MIME type reported as supported. Falling back to browser default MediaRecorder settings.');
+        } else {
+            console.log(`[Video Rendering Service] Using MIME type: ${chosenMimeType}`);
+        }
+
+        const recorderOptions: MediaRecorderOptions = { videoBitsPerSecond: SUGGESTED_VIDEO_BITRATE };
+        if (chosenMimeType) {
+            recorderOptions.mimeType = chosenMimeType;
+        }
+
+        mediaRecorder = new MediaRecorder(stream, recorderOptions);
+        console.log(`[Video Rendering Service] MediaRecorder initialized with bitrate: ${SUGGESTED_VIDEO_BITRATE}${chosenMimeType ? ` and MIME type ${chosenMimeType}` : ''}`);
 
         mediaRecorder.ondataavailable = (event) => {
           if (event.data.size > 0) {
@@ -456,16 +474,18 @@ const generateWebMWithMediaRecorder = (
           streamEndedCleanly = true;
           console.log('[Video Rendering Service] MediaRecorder stopped. Total chunks:', recordedChunks.length);
           if (stream.getTracks) stream.getTracks().forEach(track => track.stop());
-          
+
           if (recordedChunks.length === 0) {
               console.warn('[Video Rendering Service] No data recorded. This might result in an empty or very short video.');
               // Potentially reject here if 0 chunks is always an error for the user.
               // For now, let it resolve, the browser might still produce a tiny (unplayable) file.
           }
-          const blob = new Blob(recordedChunks, { type: mimeType });
-          console.log(`[Video Rendering Service] Video blob created, size: ${blob.size}, type: ${blob.type}`);
+          const blob = new Blob(recordedChunks, { type: chosenMimeType || 'video/webm' });
+          const resolvedMimeType = blob.type || chosenMimeType || 'video/webm';
+          const resolvedFormat: 'webm' | 'mp4' = resolvedMimeType.includes('mp4') ? 'mp4' : chosenFormat;
+          console.log(`[Video Rendering Service] Video blob created, size: ${blob.size}, type: ${resolvedMimeType}`);
           if (onProgressCallback) onProgressCallback(1); // Final progress
-          resolve(blob);
+          resolve({ blob, mimeType: resolvedMimeType, format: resolvedFormat });
         };
 
         mediaRecorder.onerror = (event: Event) => {
@@ -574,7 +594,7 @@ export const generateWebMFromScenes = (
   aspectRatio: AspectRatio,
   options: VideoRenderOptions,
   onProgressCallback?: (progress: number) => void
-): Promise<Blob> => {
+): Promise<GeneratedVideoResult> => {
   if (hasWebCodecsSupport()) {
     return generateWebMWithWebCodecs(scenes, aspectRatio, options, onProgressCallback).catch(error => {
       console.warn('[Video Rendering Service] WebCodecs renderer failed, falling back to MediaRecorder.', error);

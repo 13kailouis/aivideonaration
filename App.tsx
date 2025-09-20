@@ -148,7 +148,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     setProgressValue(0);
 
     try {
-      const webmBlob = await generateWebMFromScenes(
+      const generatedVideo = await generateWebMFromScenes(
         scenesToRender,
         ratio,
         { includeWatermark },
@@ -167,15 +167,15 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
         return null;
       }
 
-      let previewBlob: Blob = webmBlob;
-      let previewFormat: 'webm' | 'mp4' = 'webm';
+      let previewBlob: Blob = generatedVideo.blob;
+      let previewFormat: 'webm' | 'mp4' = generatedVideo.format;
 
-      if (!browserSupportsWebM) {
+      if (previewFormat === 'webm' && !browserSupportsWebM) {
         const canAttemptConversion = typeof window !== 'undefined' && window.crossOriginIsolated;
         if (canAttemptConversion) {
           setProgressMessage('Converting preview to MP4 for playback...');
           try {
-            const mp4Blob = await convertWebMToMP4(webmBlob, (convProg) => {
+            const mp4Blob = await convertWebMToMP4(generatedVideo.blob, (convProg) => {
               if (previewRenderTokenRef.current !== token) {
                 return;
               }
@@ -203,7 +203,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
       }
 
       updatePreviewVideo(previewBlob, previewFormat);
-      setProgressMessage('Preview video ready!');
+      setProgressMessage(`${previewFormat.toUpperCase()} preview ready!`);
       setProgressValue(100);
 
       window.setTimeout(() => {
