@@ -1,7 +1,8 @@
 
 import { Scene, AspectRatio, KenBurnsConfig } from '../types.ts';
 import { WATERMARK_TEXT } from '../constants.ts';
-import { Muxer, ArrayBufferTarget } from 'webm-muxer';
+import { Muxer as WebMMuxer, ArrayBufferTarget as WebMArrayBufferTarget } from 'webm-muxer';
+import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4ArrayBufferTarget } from 'mp4-muxer';
 
 type RenderMode = 'preview' | 'download';
 
@@ -29,7 +30,10 @@ const RENDER_CONFIG: Record<RenderMode, RenderConfig> = {
 
 const getRenderConfig = (mode: RenderMode): RenderConfig => RENDER_CONFIG[mode] ?? RENDER_CONFIG.preview;
 
-const WEB_CODECS_CODEC = 'vp09.00.10.08';
+const WEB_CODECS_VP9_CODEC = 'vp09.00.10.08';
+const MP4_CODEC_CANDIDATES = ['avc1.640028', 'avc1.4D4028', 'avc1.42E01E'] as const;
+const MP4_MIMETYPE = 'video/mp4';
+const WEBM_MIMETYPE = 'video/webm';
 
 // watermark text size relative to canvas height
 const WATERMARK_FONT_HEIGHT_PERCENT = 0.03;
@@ -475,7 +479,7 @@ async function preloadAllImages(
 }
 
 
-const generateWebMWithWebCodecs = (
+const generateVideoWithWebCodecs = (
   scenes: Scene[],
   aspectRatio: AspectRatio,
   options: VideoRenderOptions,
@@ -485,7 +489,7 @@ const generateWebMWithWebCodecs = (
 ): Promise<GeneratedVideoResult> => {
   console.log('[Video Rendering Service] Using WebCodecs accelerated renderer.');
   return new Promise(async (resolve, reject) => {
-    let encoder: any = null;
+    let encoder: VideoEncoder | null = null;
     let preloadedImages: PreloadedImage[] = [];
     try {
       const { width: canvasWidth, height: canvasHeight } = getCanvasDimensions(aspectRatio, config);
@@ -515,43 +519,168 @@ const generateWebMWithWebCodecs = (
       const imageMap = new Map<string, PreloadedImage>();
       preloadedImages.forEach(item => imageMap.set(item.sceneId, item));
 
-      const muxerTarget = new ArrayBufferTarget();
-      const muxer = new Muxer({
-        target: muxerTarget,
-        video: {
-          codec: 'V_VP9',
-          width: canvasWidth,
-          height: canvasHeight,
-          frameRate: config.fps,
-          alpha: false,
-        },
-      });
-
-      const VideoEncoderCtor = (window as unknown as Record<string, any>).VideoEncoder;
-      const VideoFrameCtor = (window as unknown as Record<string, any>).VideoFrame;
+      const videoEncoderAccess = window as unknown as {
+        VideoEncoder?: typeof VideoEncoder;
+        VideoFrame?: typeof VideoFrame;
+      };
+      const VideoEncoderCtor = videoEncoderAccess.VideoEncoder;
+      const VideoFrameCtor = videoEncoderAccess.VideoFrame;
 
       if (!VideoEncoderCtor || !VideoFrameCtor) {
         throw new Error('WebCodecs API is unavailable in this browser.');
       }
 
-      encoder = new VideoEncoderCtor({
-        output: (chunk: any, meta?: any) => {
-          muxer.addVideoChunk(chunk, meta);
-        },
-        error: (error: any) => {
-          reject(new Error(`VideoEncoder error: ${(error && (error.message || error.name)) || 'unknown'}`));
-        },
-      });
-
-      encoder.configure({
-        codec: WEB_CODECS_CODEC,
+      const baseEncoderConfig: VideoEncoderConfig = {
+        codec: WEB_CODECS_VP9_CODEC,
         width: canvasWidth,
         height: canvasHeight,
         bitrate: config.bitrate,
         framerate: config.fps,
         latencyMode: 'quality',
         hardwareAcceleration: 'prefer-hardware',
+      };
+
+      type ChunkWriter = (chunk: EncodedVideoChunk, meta?: EncodedVideoChunkMetadata) => void;
+      let addVideoChunk: ChunkWriter | null = null;
+      let finalizeMuxer: (() => Blob) | null = null;
+      let chosenFormat: 'webm' | 'mp4' = 'webm';
+      let chosenMimeType = WEBM_MIMETYPE;
+      let encoderConfig: VideoEncoderConfig = { ...baseEncoderConfig };
+
+      const isConfigSupportedFn =
+        typeof (VideoEncoderCtor as typeof VideoEncoder).isConfigSupported === 'function'
+          ? (VideoEncoderCtor as typeof VideoEncoder).isConfigSupported.bind(VideoEncoderCtor)
+          : null;
+
+      if (options.mode === 'download' && isConfigSupportedFn) {
+        for (const codec of MP4_CODEC_CANDIDATES) {
+          const candidateConfig: VideoEncoderConfig = {
+            ...baseEncoderConfig,
+            codec,
+          };
+          try {
+            const support = await isConfigSupportedFn(candidateConfig);
+            if (support.supported) {
+              const mp4Target = new Mp4ArrayBufferTarget();
+              const mp4Muxer = new Mp4Muxer({
+                target: mp4Target,
+                video: {
+                  codec: 'avc',
+                  width: canvasWidth,
+                  height: canvasHeight,
+                  frameRate: config.fps,
+                },
+                fastStart: 'in-memory',
+                firstTimestampBehavior: 'offset',
+              });
+
+              addVideoChunk = (chunk, meta) => mp4Muxer.addVideoChunk(chunk, meta);
+              finalizeMuxer = () => {
+                mp4Muxer.finalize();
+                return new Blob([mp4Target.buffer], { type: MP4_MIMETYPE });
+              };
+              chosenFormat = 'mp4';
+              chosenMimeType = MP4_MIMETYPE;
+
+              encoderConfig = {
+                ...candidateConfig,
+                ...support.config,
+                codec: support.config.codec ?? codec,
+                width: support.config.width ?? canvasWidth,
+                height: support.config.height ?? canvasHeight,
+                bitrate: support.config.bitrate ?? candidateConfig.bitrate,
+                framerate: support.config.framerate ?? candidateConfig.framerate,
+                hardwareAcceleration:
+                  support.config.hardwareAcceleration ?? candidateConfig.hardwareAcceleration,
+                latencyMode: support.config.latencyMode ?? candidateConfig.latencyMode,
+              };
+              console.log('[Video Rendering Service] MP4 WebCodecs pipeline selected with codec', encoderConfig.codec);
+              break;
+            }
+          } catch (error) {
+            console.warn(`[Video Rendering Service] MP4 codec ${codec} unavailable, trying next candidate.`, error);
+          }
+        }
+      }
+
+      if (!addVideoChunk || !finalizeMuxer) {
+        const muxerTarget = new WebMArrayBufferTarget();
+        const muxer = new WebMMuxer({
+          target: muxerTarget,
+          video: {
+            codec: 'V_VP9',
+            width: canvasWidth,
+            height: canvasHeight,
+            frameRate: config.fps,
+            alpha: false,
+          },
+        });
+
+        addVideoChunk = (chunk, meta) => muxer.addVideoChunk(chunk, meta);
+        finalizeMuxer = () => {
+          muxer.finalize();
+          return new Blob([muxerTarget.buffer], { type: WEBM_MIMETYPE });
+        };
+        chosenFormat = 'webm';
+        chosenMimeType = WEBM_MIMETYPE;
+
+        if (isConfigSupportedFn) {
+          try {
+            const support = await isConfigSupportedFn(baseEncoderConfig);
+            if (support.supported) {
+              encoderConfig = {
+                ...baseEncoderConfig,
+                ...support.config,
+                codec: support.config.codec ?? baseEncoderConfig.codec,
+                width: support.config.width ?? canvasWidth,
+                height: support.config.height ?? canvasHeight,
+                bitrate: support.config.bitrate ?? baseEncoderConfig.bitrate,
+                framerate: support.config.framerate ?? baseEncoderConfig.framerate,
+                hardwareAcceleration:
+                  support.config.hardwareAcceleration ?? baseEncoderConfig.hardwareAcceleration,
+                latencyMode: support.config.latencyMode ?? baseEncoderConfig.latencyMode,
+              };
+            }
+          } catch (error) {
+            console.warn('[Video Rendering Service] Unable to validate VP9 encoder config, using defaults.', error);
+          }
+        }
+      }
+
+      if (!addVideoChunk || !finalizeMuxer) {
+        throw new Error('Failed to initialise the media muxer.');
+      }
+
+      encoderConfig = {
+        ...encoderConfig,
+        width: canvasWidth,
+        height: canvasHeight,
+        bitrate: encoderConfig.bitrate ?? config.bitrate,
+        framerate: encoderConfig.framerate ?? config.fps,
+        hardwareAcceleration: encoderConfig.hardwareAcceleration ?? 'prefer-hardware',
+        latencyMode: encoderConfig.latencyMode ?? 'quality',
+      };
+
+      encoder = new VideoEncoderCtor({
+        output: (chunk: EncodedVideoChunk, meta?: EncodedVideoChunkMetadata) => {
+          addVideoChunk(chunk, meta);
+        },
+        error: (error: unknown) => {
+          const err =
+            error instanceof Error
+              ? error
+              : new Error((error && typeof error === 'object' && 'toString' in error)
+                  ? String((error as { toString: () => string }).toString())
+                  : 'Unknown VideoEncoder error');
+          reject(err);
+        },
       });
+
+      encoder.configure(encoderConfig);
+      const effectiveFrameRate = encoderConfig.framerate ?? config.fps;
+      console.log(
+        `[Video Rendering Service] Encoder configured for ${chosenFormat.toUpperCase()} output at ${effectiveFrameRate} FPS.`,
+      );
 
       let totalFramesRenderedOverall = 0;
       const totalFramesToRenderOverall = scenes.reduce(
@@ -589,11 +718,11 @@ const generateWebMWithWebCodecs = (
 
       await encoder.flush();
       encoder.close();
-      muxer.finalize();
 
       if (onProgressCallback) onProgressCallback(1);
-      const blob = new Blob([muxerTarget.buffer], { type: 'video/webm' });
-      resolve({ blob, mimeType: blob.type || 'video/webm', format: 'webm' });
+      const blob = finalizeMuxer();
+      console.log('[Video Rendering Service] WebCodecs rendering complete. Output size:', blob.size);
+      resolve({ blob, mimeType: blob.type || chosenMimeType, format: chosenFormat });
     } catch (error) {
       reject(error instanceof Error ? error : new Error(String(error)));
     } finally {
@@ -942,7 +1071,7 @@ export const generateWebMFromScenes = (
   const config = getRenderConfig(mode);
 
   if (hasWebCodecsSupport()) {
-    return generateWebMWithWebCodecs(scenes, aspectRatio, options, config, onProgressCallback, signal).catch(error => {
+    return generateVideoWithWebCodecs(scenes, aspectRatio, options, config, onProgressCallback, signal).catch(error => {
       console.warn('[Video Rendering Service] WebCodecs renderer failed, falling back to MediaRecorder.', error);
       return generateWebMWithMediaRecorder(scenes, aspectRatio, options, config, onProgressCallback, signal);
     });
