@@ -3,10 +3,32 @@ import { Scene, AspectRatio, KenBurnsConfig } from '../types.ts';
 import { WATERMARK_TEXT } from '../constants.ts';
 import { Muxer, ArrayBufferTarget } from 'webm-muxer';
 
-const VIDEO_FPS = 20; // Frames per second for the output video
-const MAX_VIDEO_WIDTH_LANDSCAPE = 1280;
-const MAX_VIDEO_HEIGHT_PORTRAIT = 1280;
-const FRAME_DURATION_US = Math.round(1_000_000 / VIDEO_FPS);
+type RenderMode = 'preview' | 'download';
+
+interface RenderConfig {
+  fps: number;
+  maxLandscapeWidth: number;
+  maxPortraitHeight: number;
+  bitrate: number;
+}
+
+const RENDER_CONFIG: Record<RenderMode, RenderConfig> = {
+  preview: {
+    fps: 15,
+    maxLandscapeWidth: 854,
+    maxPortraitHeight: 960,
+    bitrate: 1_200_000,
+  },
+  download: {
+    fps: 24,
+    maxLandscapeWidth: 1280,
+    maxPortraitHeight: 1280,
+    bitrate: 3_500_000,
+  },
+};
+
+const getRenderConfig = (mode: RenderMode): RenderConfig => RENDER_CONFIG[mode] ?? RENDER_CONFIG.preview;
+
 const WEB_CODECS_CODEC = 'vp09.00.10.08';
 
 // watermark text size relative to canvas height
@@ -14,7 +36,7 @@ const WATERMARK_FONT_HEIGHT_PERCENT = 0.03;
 
 const IMAGE_LOAD_RETRIES = 2; // Reduced for faster failure if needed
 const INITIAL_RETRY_DELAY_MS = 300;
-const SUGGESTED_VIDEO_BITRATE = 2500000; // 2.5 Mbps
+const MEDIA_RECORDER_DEFAULT_BITRATE = 2_500_000; // Default fallback if config bitrate unavailable
 const MEDIA_RECORDER_TIMESLICE_MS = 100; // Get data every 100ms
 const VIDEO_FRAME_CAPTURE_TIME = 0; // seconds - capture first frame
 
@@ -26,6 +48,7 @@ const hasWebCodecsSupport = (): boolean => {
 
 interface VideoRenderOptions {
   includeWatermark: boolean;
+  mode?: RenderMode;
 }
 
 interface PreloadedImage {
@@ -42,16 +65,19 @@ export interface GeneratedVideoResult {
 const FALLBACK_BASE64_IMAGE =
   'data:image/png;base64,iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAQAAAC1HAwCAAAAC0lEQVR42mP8/x8AAwMCAO9z9zsAAAAASUVORK5CYII='; // 1x1 gray pixel
 
-function getCanvasDimensions(aspectRatio: AspectRatio): { width: number; height: number } {
+function getCanvasDimensions(
+  aspectRatio: AspectRatio,
+  config: RenderConfig,
+): { width: number; height: number } {
   if (aspectRatio === '16:9') {
-    const width = MAX_VIDEO_WIDTH_LANDSCAPE;
-    const height = Math.round(width * 9 / 16);
-    return { width, height };
-  } else { // 9:16
-    const height = MAX_VIDEO_HEIGHT_PORTRAIT;
-    const width = Math.round(height * 9 / 16);
+    const width = config.maxLandscapeWidth;
+    const height = Math.round((width * 9) / 16);
     return { width, height };
   }
+
+  const height = config.maxPortraitHeight;
+  const width = Math.round((height * 9) / 16);
+  return { width, height };
 }
 
 function drawImageWithKenBurns(
@@ -264,13 +290,14 @@ const generateWebMWithWebCodecs = (
   scenes: Scene[],
   aspectRatio: AspectRatio,
   options: VideoRenderOptions,
+  config: RenderConfig,
   onProgressCallback?: (progress: number) => void
 ): Promise<GeneratedVideoResult> => {
   console.log('[Video Rendering Service] Using WebCodecs accelerated renderer.');
   return new Promise(async (resolve, reject) => {
     let encoder: any = null;
     try {
-      const { width: canvasWidth, height: canvasHeight } = getCanvasDimensions(aspectRatio);
+      const { width: canvasWidth, height: canvasHeight } = getCanvasDimensions(aspectRatio, config);
       const canvas = document.createElement('canvas');
       canvas.width = canvasWidth;
       canvas.height = canvasHeight;
@@ -279,6 +306,8 @@ const generateWebMWithWebCodecs = (
       if (!ctx) {
         throw new Error('Failed to get canvas context for WebCodecs video generation.');
       }
+
+      const frameDurationUS = Math.round(1_000_000 / config.fps);
 
       const updateOverallProgress = (stageProgress: number, stageWeight: number, baseProgress: number) => {
         if (onProgressCallback) {
@@ -300,7 +329,7 @@ const generateWebMWithWebCodecs = (
           codec: 'V_VP9',
           width: canvasWidth,
           height: canvasHeight,
-          frameRate: VIDEO_FPS,
+          frameRate: config.fps,
           alpha: false,
         },
       });
@@ -325,13 +354,16 @@ const generateWebMWithWebCodecs = (
         codec: WEB_CODECS_CODEC,
         width: canvasWidth,
         height: canvasHeight,
-        bitrate: SUGGESTED_VIDEO_BITRATE,
-        framerate: VIDEO_FPS,
+        bitrate: config.bitrate,
+        framerate: config.fps,
         latencyMode: 'quality',
       });
 
       let totalFramesRenderedOverall = 0;
-      const totalFramesToRenderOverall = scenes.reduce((acc, scene) => acc + Math.max(1, Math.round(scene.duration * VIDEO_FPS)), 0);
+      const totalFramesToRenderOverall = scenes.reduce(
+        (acc, scene) => acc + Math.max(1, Math.round(scene.duration * config.fps)),
+        0,
+      );
 
       for (const scene of scenes) {
         const img = imageMap.get(scene.id);
@@ -339,7 +371,7 @@ const generateWebMWithWebCodecs = (
           throw new Error(`Internal error: Preloaded image missing for scene ${scene.id}`);
         }
 
-        const numFramesForScene = Math.max(1, Math.round(scene.duration * VIDEO_FPS));
+        const numFramesForScene = Math.max(1, Math.round(scene.duration * config.fps));
         for (let frameIndex = 0; frameIndex < numFramesForScene; frameIndex++) {
           const progressInThisScene = numFramesForScene <= 1 ? 1 : frameIndex / (numFramesForScene - 1);
           drawImageWithKenBurns(ctx, img, canvasWidth, canvasHeight, progressInThisScene, scene.kenBurnsConfig);
@@ -347,8 +379,8 @@ const generateWebMWithWebCodecs = (
             drawWatermark(ctx, canvasWidth, canvasHeight, WATERMARK_TEXT);
           }
 
-          const timestamp = totalFramesRenderedOverall * FRAME_DURATION_US;
-          const frame = new VideoFrameCtor(canvas, { timestamp, duration: FRAME_DURATION_US });
+          const timestamp = totalFramesRenderedOverall * frameDurationUS;
+          const frame = new VideoFrameCtor(canvas, { timestamp, duration: frameDurationUS });
           encoder.encode(frame);
           frame.close();
 
@@ -385,13 +417,14 @@ const generateWebMWithMediaRecorder = (
   scenes: Scene[],
   aspectRatio: AspectRatio,
   options: VideoRenderOptions,
+  config: RenderConfig,
   onProgressCallback?: (progress: number) => void // Renamed for clarity
 ): Promise<GeneratedVideoResult> => {
   console.log('[Video Rendering Service] Starting MediaRecorder-based rendering.');
   return new Promise(async (resolve, reject) => {
     let streamEndedCleanly = false; // Moved declaration to the top of the async function scope
 
-    const { width: canvasWidth, height: canvasHeight } = getCanvasDimensions(aspectRatio);
+    const { width: canvasWidth, height: canvasHeight } = getCanvasDimensions(aspectRatio, config);
     console.log(`[Video Rendering Service] Canvas dimensions: ${canvasWidth}x${canvasHeight}`);
 
     const canvas = document.createElement('canvas');
@@ -427,8 +460,8 @@ const generateWebMWithMediaRecorder = (
             updateOverallProgress(val, 0.2, 0);
         });
 
-        const stream = canvas.captureStream(VIDEO_FPS);
-        console.log(`[Video Rendering Service] Canvas stream captured at ${VIDEO_FPS} FPS.`);
+        const stream = canvas.captureStream(config.fps);
+        console.log(`[Video Rendering Service] Canvas stream captured at ${config.fps} FPS.`);
 
         const mimeTypeCandidates: Array<{ type: string; format: 'webm' | 'mp4' }> = [
             { type: 'video/webm;codecs=vp9', format: 'webm' },
@@ -455,13 +488,13 @@ const generateWebMWithMediaRecorder = (
             console.log(`[Video Rendering Service] Using MIME type: ${chosenMimeType}`);
         }
 
-        const recorderOptions: MediaRecorderOptions = { videoBitsPerSecond: SUGGESTED_VIDEO_BITRATE };
+        const recorderOptions: MediaRecorderOptions = { videoBitsPerSecond: config.bitrate || MEDIA_RECORDER_DEFAULT_BITRATE };
         if (chosenMimeType) {
             recorderOptions.mimeType = chosenMimeType;
         }
 
         mediaRecorder = new MediaRecorder(stream, recorderOptions);
-        console.log(`[Video Rendering Service] MediaRecorder initialized with bitrate: ${SUGGESTED_VIDEO_BITRATE}${chosenMimeType ? ` and MIME type ${chosenMimeType}` : ''}`);
+        console.log(`[Video Rendering Service] MediaRecorder initialized with bitrate: ${recorderOptions.videoBitsPerSecond}${chosenMimeType ? ` and MIME type ${chosenMimeType}` : ''}`);
 
         mediaRecorder.ondataavailable = (event) => {
           if (event.data.size > 0) {
@@ -510,7 +543,10 @@ const generateWebMWithMediaRecorder = (
         let currentSceneIndex = 0;
         let currentFrameInScene = 0;
         let totalFramesRenderedOverall = 0;
-        const totalFramesToRenderOverall = scenes.reduce((acc, scene) => acc + Math.round(scene.duration * VIDEO_FPS), 0);
+        const totalFramesToRenderOverall = scenes.reduce(
+          (acc, scene) => acc + Math.max(1, Math.round(scene.duration * config.fps)),
+          0,
+        );
         
         console.log(`[Video Rendering Service] Starting requestAnimationFrame loop. Total scenes: ${scenes.length}, Total frames to render: ${totalFramesToRenderOverall}`);
 
@@ -542,7 +578,7 @@ const generateWebMWithMediaRecorder = (
             }
             
             const img = preloadedImgData.image;
-            const numFramesForThisScene = Math.round(scene.duration * VIDEO_FPS);
+            const numFramesForThisScene = Math.max(1, Math.round(scene.duration * config.fps));
             const progressInThisScene = numFramesForThisScene <= 1 ? 1 : currentFrameInScene / (numFramesForThisScene -1);
 
             try {
@@ -595,12 +631,15 @@ export const generateWebMFromScenes = (
   options: VideoRenderOptions,
   onProgressCallback?: (progress: number) => void
 ): Promise<GeneratedVideoResult> => {
+  const mode = options.mode ?? 'preview';
+  const config = getRenderConfig(mode);
+
   if (hasWebCodecsSupport()) {
-    return generateWebMWithWebCodecs(scenes, aspectRatio, options, onProgressCallback).catch(error => {
+    return generateWebMWithWebCodecs(scenes, aspectRatio, options, config, onProgressCallback).catch(error => {
       console.warn('[Video Rendering Service] WebCodecs renderer failed, falling back to MediaRecorder.', error);
-      return generateWebMWithMediaRecorder(scenes, aspectRatio, options, onProgressCallback);
+      return generateWebMWithMediaRecorder(scenes, aspectRatio, options, config, onProgressCallback);
     });
   }
 
-  return generateWebMWithMediaRecorder(scenes, aspectRatio, options, onProgressCallback);
+  return generateWebMWithMediaRecorder(scenes, aspectRatio, options, config, onProgressCallback);
 };
