@@ -42,6 +42,7 @@ export const analyzeNarrationWithGemini = async (
         *   Avoid using direct quotes from the scene text. Focus on creating a *new visual interpretation* of the scene's meaning that is compelling and clear.
         *   Ensure the imagePrompt is concise and focuses on a single, strong visual idea.
     4.  'duration': An estimated duration for the scene in seconds, based on an average reading speed of approximately 3 words per second. Scenes should ideally be between 4 and 15 seconds.
+        *   Long narrations MUST be broken into as many scenes as needed so no single scene exceeds 15 seconds. It is normal to produce dozens of scenes for a 7-17 minute script. Never cap the number of scenes at an arbitrary limit.
 
     Narration:
     "${narrationText}"

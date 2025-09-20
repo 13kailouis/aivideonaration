@@ -1,6 +1,11 @@
 // Timestamp: 2024-09-12T10:00:00Z - Refresh
 import { Scene, GeminiSceneResponseItem, KenBurnsConfig, AspectRatio } from '../types.ts';
-import { FALLBACK_FOOTAGE_KEYWORDS, AVERAGE_WORDS_PER_SECOND } from '../constants.ts';
+import {
+  FALLBACK_FOOTAGE_KEYWORDS,
+  AVERAGE_WORDS_PER_SECOND,
+  MAX_SCENE_DURATION_SECONDS,
+  MIN_SCENE_DURATION_SECONDS
+} from '../constants.ts';
 import { generateImageWithImagen } from './geminiService.ts';
 
 // Simple hash helper used to derive deterministic offsets for placeholder
@@ -118,6 +123,165 @@ const dedupeStrings = (values: string[]): string[] => {
 const limitWords = (text: string, maxWords = 9): string => {
   const words = text.trim().split(/\s+/);
   return words.slice(0, maxWords).join(' ').trim();
+};
+
+const countWords = (text: string): number => text.trim().split(/\s+/).filter(Boolean).length;
+
+const limitPromptWords = (text: string, maxWords: number): string => {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) return normalized;
+  const words = normalized.split(' ');
+  if (words.length <= maxWords) {
+    return normalized.endsWith('.') || normalized.endsWith('!') || normalized.endsWith('?')
+      ? normalized
+      : `${normalized}.`;
+  }
+  const trimmed = words.slice(0, maxWords).join(' ').trim();
+  return trimmed.endsWith('.') || trimmed.endsWith('!') || trimmed.endsWith('?')
+    ? trimmed
+    : `${trimmed}.`;
+};
+
+const splitSceneTextByDuration = (text: string, maxDurationSeconds: number): string[] => {
+  const sanitized = text.replace(/\s+/g, ' ').trim();
+  if (!sanitized) return [];
+
+  const maxWordsPerScene = Math.max(1, Math.round(maxDurationSeconds * AVERAGE_WORDS_PER_SECOND));
+  const sentenceMatches = sanitized.match(/[^.!?]+[.!?]?/g);
+  const sentences = sentenceMatches ? sentenceMatches.map(s => s.trim()).filter(Boolean) : [sanitized];
+
+  const chunks: string[] = [];
+  let currentSentences: string[] = [];
+  let currentWordCount = 0;
+
+  const flushCurrent = () => {
+    if (currentSentences.length === 0) return;
+    const combined = currentSentences.join(' ').replace(/\s+/g, ' ').trim();
+    if (combined) chunks.push(combined);
+    currentSentences = [];
+    currentWordCount = 0;
+  };
+
+  for (const sentence of sentences) {
+    const sentenceWordCount = countWords(sentence);
+
+    if (sentenceWordCount >= maxWordsPerScene * 1.2) {
+      // Extremely long sentence - split by words directly
+      flushCurrent();
+      const words = sentence.split(/\s+/).filter(Boolean);
+      for (let start = 0; start < words.length; start += maxWordsPerScene) {
+        const slice = words.slice(start, start + maxWordsPerScene).join(' ');
+        if (slice) chunks.push(slice.trim());
+      }
+      continue;
+    }
+
+    if (currentWordCount + sentenceWordCount > maxWordsPerScene && currentSentences.length > 0) {
+      flushCurrent();
+    }
+
+    currentSentences.push(sentence);
+    currentWordCount += sentenceWordCount;
+  }
+
+  flushCurrent();
+
+  if (chunks.length <= 1) {
+    return chunks;
+  }
+
+  const minWordThreshold = Math.max(4, Math.round(MIN_SCENE_DURATION_SECONDS * AVERAGE_WORDS_PER_SECOND * 0.6));
+  const lastChunkWords = countWords(chunks[chunks.length - 1]);
+  if (lastChunkWords < minWordThreshold) {
+    const merged = `${chunks[chunks.length - 2]} ${chunks[chunks.length - 1]}`.replace(/\s+/g, ' ').trim();
+    chunks.splice(chunks.length - 2, 2, merged);
+  }
+
+  return chunks;
+};
+
+const deriveKeywordsForChunk = (chunkText: string, baseKeywords: string[]): string[] => {
+  const frequencies = new Map<string, number>();
+  for (const token of extractTokens(chunkText)) {
+    if (!token || GENERIC_MEDIA_TERMS.includes(token)) continue;
+    frequencies.set(token, (frequencies.get(token) || 0) + 1);
+  }
+
+  const sortedTokens = Array.from(frequencies.entries())
+    .sort((a, b) => b[1] - a[1])
+    .map(([token]) => token);
+
+  const combined = dedupeStrings([
+    ...baseKeywords,
+    ...sortedTokens,
+  ]);
+
+  const filtered = combined.filter(token => token && !GENERIC_MEDIA_TERMS.includes(token.toLowerCase()));
+
+  if (filtered.length >= 3) return filtered.slice(0, 3);
+  if (filtered.length === 2) return filtered;
+  if (filtered.length === 1) return [...filtered, `${filtered[0]} focus`];
+
+  const fallbackTokens = chunkText
+    .split(/\s+/)
+    .map(word => sanitizeWord(word))
+    .filter(Boolean);
+
+  const fallback = dedupeStrings(fallbackTokens).filter(word => word.length > 3).slice(0, 2);
+  if (fallback.length >= 2) return fallback;
+  if (fallback.length === 1) return [fallback[0], `${fallback[0]} details`];
+  return ['cinematic storytelling', 'dynamic visuals'];
+};
+
+const createPromptForChunk = (
+  basePrompt: string | undefined,
+  chunkText: string,
+  segmentIndex: number,
+  totalSegments: number
+): string => {
+  const focus = limitWords(chunkText, 14);
+  const emphasis = focus ? `Highlight ${focus}.` : '';
+  const segmentHint = totalSegments > 1 ? `Segment ${segmentIndex + 1} of ${totalSegments}.` : '';
+
+  if (basePrompt && basePrompt.trim().length > 0) {
+    const combined = `${basePrompt.trim()} ${segmentHint} ${emphasis}`.replace(/\s+/g, ' ').trim();
+    return limitPromptWords(combined, 20);
+  }
+
+  const fallbackPrompt = `Cinematic depiction of ${focus || 'the narration moment'}. ${segmentHint}`.trim();
+  return limitPromptWords(fallbackPrompt, 20);
+};
+
+export const normalizeGeminiScenes = (analysis: GeminiSceneResponseItem[]): GeminiSceneResponseItem[] => {
+  const normalized: GeminiSceneResponseItem[] = [];
+
+  analysis.forEach(item => {
+    const baseKeywords = Array.isArray(item.keywords) ? item.keywords.filter(Boolean) : [];
+    const sanitizedText = item.sceneText?.replace(/\s+/g, ' ').trim() || '';
+    if (!sanitizedText) {
+      return;
+    }
+
+    const segments = splitSceneTextByDuration(sanitizedText, MAX_SCENE_DURATION_SECONDS);
+    const safeSegments = segments.length > 0 ? segments : [sanitizedText];
+
+    safeSegments.forEach((segmentText, index) => {
+      const wordCount = countWords(segmentText);
+      const computedDuration = Math.max(
+        MIN_SCENE_DURATION_SECONDS,
+        Math.round(wordCount / AVERAGE_WORDS_PER_SECOND)
+      );
+      const boundedDuration = Math.min(MAX_SCENE_DURATION_SECONDS, computedDuration);
+      normalized.push({
+        sceneText: segmentText,
+        keywords: deriveKeywordsForChunk(segmentText, baseKeywords),
+        imagePrompt: createPromptForChunk(item.imagePrompt, segmentText, index, safeSegments.length),
+        duration: boundedDuration,
+      });
+    });
+  });
+
+  return normalized;
 };
 
 const buildContextTerms = (context: PlaceholderContext): string[] => {
