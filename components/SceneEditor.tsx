@@ -82,8 +82,12 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
                     id={`sceneDuration-${scene.id}`}
                     type="number"
                     value={editDuration}
-                    onChange={(e) => setEditDuration(Math.max(1, parseInt(e.target.value, 10) || 1))}
+                    onChange={(e) => {
+                      const parsed = parseFloat(e.target.value);
+                      setEditDuration(Math.max(1, Number.isFinite(parsed) ? parsed : 1));
+                    }}
                     min="1"
+                    step="0.1"
                     className="w-full p-2 bg-neutral-900 border border-neutral-700 rounded-md text-gray-200 focus:ring-white focus:border-white"
                     disabled={isGenerating}
                   />
@@ -110,7 +114,7 @@ const SceneEditor: React.FC<SceneEditorProps> = ({
                 <p className="text-gray-300 text-sm whitespace-pre-wrap break-words">
                   <strong className="text-gray-400">Text:</strong> {scene.sceneText.length > 100 ? scene.sceneText.substring(0,97) + "..." : scene.sceneText}
                 </p>
-                <p className="text-gray-300 text-sm"><strong className="text-gray-400">Duration:</strong> {scene.duration}s</p>
+                <p className="text-gray-300 text-sm"><strong className="text-gray-400">Duration:</strong> {scene.duration.toFixed(1)}s</p>
                 <p className="text-gray-300 text-sm truncate">
                     <strong className="text-gray-400">Footage:</strong> {
                         scene.footageType === 'video' ?

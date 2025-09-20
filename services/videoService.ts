@@ -129,6 +129,34 @@ const limitWords = (text: string, maxWords = 9): string => {
 
 const countWords = (text: string): number => text.trim().split(/\s+/).filter(Boolean).length;
 
+const estimateSceneDurationSeconds = (text: string): number => {
+  const normalized = text.replace(/\s+/g, ' ').trim();
+  if (!normalized) {
+    return MIN_SCENE_DURATION_SECONDS;
+  }
+
+  const words = normalized.split(' ').filter(Boolean);
+  const wordCount = words.length;
+  const baseDuration = wordCount / AVERAGE_WORDS_PER_SECOND;
+
+  const sentenceBreaks = (normalized.match(/[.!?]/g) ?? []).length;
+  const commaBreaks = (normalized.match(/[,;:]/g) ?? []).length;
+  const newlineBreaks = (normalized.match(/\n/g) ?? []).length;
+  const longWordCount = words.filter(word => word.length >= 9).length;
+
+  const rhythmPadding = sentenceBreaks * 0.65 + commaBreaks * 0.25 + newlineBreaks * 0.4;
+  const emphasisPadding = longWordCount * 0.05;
+  const energyMultiplier = 1 + Math.min(0.28, (sentenceBreaks + commaBreaks + newlineBreaks) * 0.035);
+
+  const estimated = (baseDuration + rhythmPadding + emphasisPadding + 0.8) * energyMultiplier;
+  const clamped = Math.min(
+    MAX_SCENE_DURATION_SECONDS,
+    Math.max(MIN_SCENE_DURATION_SECONDS, estimated),
+  );
+
+  return Number(clamped.toFixed(2));
+};
+
 const limitPromptWords = (text: string, maxWords: number): string => {
   const normalized = text.replace(/\s+/g, ' ').trim();
   if (!normalized) return normalized;
@@ -148,7 +176,10 @@ const splitSceneTextByDuration = (text: string, maxDurationSeconds: number): str
   const sanitized = text.replace(/\s+/g, ' ').trim();
   if (!sanitized) return [];
 
-  const maxWordsPerScene = Math.max(1, Math.round(maxDurationSeconds * AVERAGE_WORDS_PER_SECOND));
+  const maxWordsPerScene = Math.max(
+    1,
+    Math.round(maxDurationSeconds * AVERAGE_WORDS_PER_SECOND * 0.92),
+  );
   const sentenceMatches = sanitized.match(/[^.!?]+[.!?]?/g);
   const sentences = sentenceMatches ? sentenceMatches.map(s => s.trim()).filter(Boolean) : [sanitized];
 
@@ -268,12 +299,7 @@ export const normalizeGeminiScenes = (analysis: GeminiSceneResponseItem[]): Gemi
     const safeSegments = segments.length > 0 ? segments : [sanitizedText];
 
     safeSegments.forEach((segmentText, index) => {
-      const wordCount = countWords(segmentText);
-      const computedDuration = Math.max(
-        MIN_SCENE_DURATION_SECONDS,
-        Math.round(wordCount / AVERAGE_WORDS_PER_SECOND)
-      );
-      const boundedDuration = Math.min(MAX_SCENE_DURATION_SECONDS, computedDuration);
+      const boundedDuration = estimateSceneDurationSeconds(segmentText);
       normalized.push({
         sceneText: segmentText,
         keywords: deriveKeywordsForChunk(segmentText, baseKeywords),
@@ -638,8 +664,14 @@ export const processNarrationToScenes = async (
     let footageType: 'image' | 'video' = 'image';
     let imageGenError: string | undefined;
 
-    const duration = item.duration > 0 ? item.duration : calculateDurationFromText(item.sceneText);
-    const validatedDuration = Math.max(3, Math.min(20, duration));
+    const rawDuration = item.duration > 0 ? item.duration : calculateDurationFromText(item.sceneText);
+    const normalizedDuration = Number.isFinite(rawDuration)
+      ? Number(rawDuration.toFixed(2))
+      : MIN_SCENE_DURATION_SECONDS;
+    const validatedDuration = Math.min(
+      MAX_SCENE_DURATION_SECONDS,
+      Math.max(MIN_SCENE_DURATION_SECONDS, normalizedDuration),
+    );
     const sceneNumber = index + 1;
 
     let currentStage: 'ai_image' | 'placeholder_image' = options.useAiGeneratedImages ? 'ai_image' : 'placeholder_image';
@@ -747,7 +779,8 @@ export const processNarrationToScenes = async (
 };
 
 export const calculateDurationFromText = (text: string): number => {
-  if (!text || text.trim() === '') return 4; // Default duration for empty scenes
-  const wordCount = text.split(/\s+/).filter(Boolean).length;
-  return Math.ceil(wordCount / AVERAGE_WORDS_PER_SECOND);
+  if (!text || text.trim() === '') {
+    return MIN_SCENE_DURATION_SECONDS;
+  }
+  return estimateSceneDurationSeconds(text);
 };
