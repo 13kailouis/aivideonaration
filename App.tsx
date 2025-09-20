@@ -34,12 +34,15 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
   const [useAiImages, setUseAiImages] = useState<boolean>(false);
   const [useAiVideo, setUseAiVideo] = useState<boolean>(false);
 
-  const [previewVideoBlob, setPreviewVideoBlob] = useState<Blob | null>(null);
   const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
   const [previewVideoFormat, setPreviewVideoFormat] = useState<'webm' | 'mp4'>('webm');
   const [isPreparingPreviewVideo, setIsPreparingPreviewVideo] = useState<boolean>(false);
   const [previewNeedsRefresh, setPreviewNeedsRefresh] = useState<boolean>(false);
   const [browserSupportsWebM, setBrowserSupportsWebM] = useState<boolean>(true);
+
+  const [isPreparingDownloadVideo, setIsPreparingDownloadVideo] = useState<boolean>(false);
+  const [downloadStatus, setDownloadStatus] = useState<'idle' | 'preparing' | 'ready' | 'error'>('idle');
+  const [downloadFormatState, setDownloadFormatState] = useState<'webm' | 'mp4'>('webm');
 
   const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(premiumUser);
   const [ttsPlaybackStatus, setTTSPlaybackStatus] = useState<'idle' | 'playing' | 'paused' | 'ended'>('idle');
@@ -50,6 +53,12 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
   const previewVideoBlobRef = useRef<Blob | null>(null);
   const previewVideoFormatRef = useRef<'webm' | 'mp4'>('webm');
   const previewVideoUrlRef = useRef<string | null>(null);
+
+  const downloadJobIdRef = useRef(0);
+  const downloadVideoBlobRef = useRef<Blob | null>(null);
+  const downloadFormatRef = useRef<'webm' | 'mp4'>('webm');
+  const downloadReadySignatureRef = useRef<string | null>(null);
+  const downloadActiveSignatureRef = useRef<string | null>(null);
 
   const showPreview = scenes.length > 0 || isGeneratingScenes || isRenderingVideo;
   const [previewMounted, setPreviewMounted] = useState(showPreview);
@@ -74,7 +83,6 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
   const updatePreviewVideo = useCallback((blob: Blob | null, format: 'webm' | 'mp4') => {
     previewVideoBlobRef.current = blob;
     previewVideoFormatRef.current = format;
-    setPreviewVideoBlob(blob);
     setPreviewVideoFormat(format);
     setPreviewVideoUrl(prevUrl => {
       if (prevUrl) {
@@ -98,7 +106,8 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     setIsPreparingPreviewVideo(false);
     setPreviewNeedsRefresh(false);
     updatePreviewVideo(null, 'webm');
-  }, [updatePreviewVideo]);
+    markDownloadStale();
+  }, [markDownloadStale, updatePreviewVideo]);
 
   const gridColsClass = showPreview ? 'lg:grid-cols-2' : 'lg:grid-cols-1';
 
@@ -134,6 +143,33 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     setWarnings(prev => [...prev, message]);
   }, []);
 
+  const computeSceneSignature = useCallback((sceneList: Scene[], ratio: AspectRatio, watermark: boolean) => {
+    const header = `${ratio}|${watermark ? 'wm' : 'no-wm'}`;
+    const body = sceneList
+      .map(scene => `${scene.id}:${scene.duration}:${scene.footageUrl || ''}:${scene.sceneText}`)
+      .join('|');
+    return `${header}|${body}`;
+  }, []);
+
+  const markDownloadStale = useCallback(() => {
+    downloadJobIdRef.current += 1;
+    downloadVideoBlobRef.current = null;
+    downloadFormatRef.current = 'webm';
+    downloadReadySignatureRef.current = null;
+    downloadActiveSignatureRef.current = null;
+    setDownloadStatus('idle');
+    setDownloadFormatState('webm');
+    setIsPreparingDownloadVideo(false);
+  }, []);
+
+  const storeDownloadResult = useCallback((blob: Blob, format: 'webm' | 'mp4', signature: string) => {
+    downloadVideoBlobRef.current = blob;
+    downloadFormatRef.current = format;
+    downloadReadySignatureRef.current = signature;
+    setDownloadStatus('ready');
+    setDownloadFormatState(format);
+  }, []);
+
   const renderPreviewVideo = useCallback(async (
     scenesToRender: Scene[],
     ratio: AspectRatio,
@@ -151,7 +187,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
       const generatedVideo = await generateWebMFromScenes(
         scenesToRender,
         ratio,
-        { includeWatermark },
+        { includeWatermark, mode: 'preview' },
         (p) => {
           if (previewRenderTokenRef.current !== token) {
             return;
@@ -262,6 +298,71 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     };
   }, [previewNeedsRefresh, scenes, aspectRatio, isGeneratingScenes, renderPreviewVideo, resetPreviewVideo]);
 
+  useEffect(() => {
+    if (scenes.length === 0 || isGeneratingScenes) {
+      markDownloadStale();
+      return;
+    }
+
+    const signature = computeSceneSignature(scenes, aspectRatio, includeWatermark);
+
+    if (
+      downloadReadySignatureRef.current === signature ||
+      downloadActiveSignatureRef.current === signature ||
+      isRenderingVideo
+    ) {
+      return;
+    }
+
+    const jobId = ++downloadJobIdRef.current;
+    downloadActiveSignatureRef.current = signature;
+    setDownloadStatus(prev => (prev === 'ready' ? prev : 'preparing'));
+    setIsPreparingDownloadVideo(true);
+
+    let cancelled = false;
+    const scenesSnapshot = [...scenes];
+
+    generateWebMFromScenes(scenesSnapshot, aspectRatio, { includeWatermark, mode: 'download' })
+      .then(result => {
+        if (cancelled || downloadJobIdRef.current !== jobId) {
+          return;
+        }
+        storeDownloadResult(result.blob, result.format, signature);
+      })
+      .catch(error => {
+        if (cancelled || downloadJobIdRef.current !== jobId) {
+          return;
+        }
+        console.error('Error preparing download video:', error);
+        setDownloadStatus('error');
+        addWarning('Failed to pre-render the high-quality download. Use the download button to retry.');
+      })
+      .finally(() => {
+        if (cancelled || downloadJobIdRef.current !== jobId) {
+          return;
+        }
+        setIsPreparingDownloadVideo(false);
+        downloadActiveSignatureRef.current = null;
+      });
+
+    return () => {
+      cancelled = true;
+      if (downloadActiveSignatureRef.current === signature) {
+        downloadActiveSignatureRef.current = null;
+      }
+    };
+  }, [
+    scenes,
+    aspectRatio,
+    includeWatermark,
+    isGeneratingScenes,
+    isRenderingVideo,
+    computeSceneSignature,
+    markDownloadStale,
+    storeDownloadResult,
+    addWarning,
+  ]);
+
  const handleSceneGenerationProgress = useCallback((
     message: string, 
     valueWithinStage: number, // 0 to 1 for current stage
@@ -371,6 +472,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
       handleSceneGenerationProgress('Video preview ready!', 1, 'finalizing');
       setScenes(processedScenes);
       setPreviewNeedsRefresh(true);
+      markDownloadStale();
       
       setTimeout(() => {
           setProgressMessage('');
@@ -387,109 +489,136 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     } finally {
       setIsGeneratingScenes(false);
     }
-  }, [narrationText, aspectRatio, apiKeyMissing, useAiImages, useAiVideo, handleSceneGenerationProgress, resetPreviewVideo]);
+  }, [
+    narrationText,
+    aspectRatio,
+    apiKeyMissing,
+    useAiImages,
+    useAiVideo,
+    handleSceneGenerationProgress,
+    resetPreviewVideo,
+    markDownloadStale,
+  ]);
 
   const handleDownloadVideo = async () => {
     if (scenes.length === 0 || isRenderingVideo) {
       return;
     }
+
     setIsRenderingVideo(true);
     setError(null);
     setWarnings([]);
     setProgressMessage('Preparing video download...');
     setProgressValue(0);
 
-    const canConvertToMp4 = window.crossOriginIsolated;
+    const signature = computeSceneSignature(scenes, aspectRatio, includeWatermark);
+    const canConvertToMp4 = typeof window !== 'undefined' && window.crossOriginIsolated;
+    const jobId = ++downloadJobIdRef.current;
+
+    downloadActiveSignatureRef.current = signature;
+    setDownloadStatus('preparing');
+    setIsPreparingDownloadVideo(true);
 
     try {
-      let baseBlob: Blob | null = previewVideoBlobRef.current;
-      let baseFormat: 'webm' | 'mp4' = previewVideoFormatRef.current;
+      let workingBlob = downloadVideoBlobRef.current;
+      let workingFormat = downloadFormatRef.current;
 
-      if (!baseBlob && previewRenderPromiseRef.current) {
-        await previewRenderPromiseRef.current;
-        baseBlob = previewVideoBlobRef.current;
-        baseFormat = previewVideoFormatRef.current;
-      }
+      if (!workingBlob || downloadReadySignatureRef.current !== signature) {
+        const result = await generateWebMFromScenes(
+          scenes,
+          aspectRatio,
+          { includeWatermark, mode: 'download' },
+          (progress) => {
+            if (downloadJobIdRef.current !== jobId) {
+              return;
+            }
+            setProgressMessage('Rendering download-ready video...');
+            setProgressValue(Math.min(95, Math.round(progress * 80)));
+          }
+        );
 
-      if (!baseBlob) {
-        const token = ++previewRenderTokenRef.current;
-        setProgressMessage('Rendering video for download...');
-        const manualRenderPromise = renderPreviewVideo(scenes, aspectRatio, token);
-        previewRenderPromiseRef.current = manualRenderPromise;
-        baseBlob = await manualRenderPromise;
-        if (previewRenderTokenRef.current === token) {
-          previewRenderPromiseRef.current = null;
-          setPreviewNeedsRefresh(false);
+        if (downloadJobIdRef.current !== jobId) {
+          return;
         }
-        baseFormat = previewVideoFormatRef.current;
+
+        workingBlob = result.blob;
+        workingFormat = result.format;
+        storeDownloadResult(result.blob, result.format, signature);
       } else {
-        setProgressMessage(baseFormat === 'mp4' ? 'Preparing MP4 download...' : 'Preparing WebM download...');
+        setProgressMessage(workingFormat === 'mp4' ? 'Preparing MP4 download...' : 'Preparing video download...');
         setProgressValue(80);
       }
 
-      if (!baseBlob) {
+      if (!workingBlob) {
         throw new Error('Video rendering failed. Please try again.');
       }
 
-      let downloadBlob: Blob = baseBlob;
-      let fileExtension: 'webm' | 'mp4' = baseFormat;
+      let finalBlob: Blob = workingBlob;
+      let finalFormat: 'webm' | 'mp4' = workingFormat;
 
-      if (fileExtension !== 'mp4') {
+      if (finalFormat !== 'mp4') {
         if (canConvertToMp4) {
           setProgressMessage('Converting to MP4...');
           try {
-            const mp4Blob = await convertWebMToMP4(baseBlob, (convProg) => {
+            const mp4Blob = await convertWebMToMP4(finalBlob, (convProg) => {
+              if (downloadJobIdRef.current !== jobId) {
+                return;
+              }
               setProgressMessage(`Converting to MP4: ${Math.round(convProg * 100)}%`);
-              setProgressValue(100 - Math.round((1 - convProg) * 5));
+              setProgressValue(80 + Math.round(convProg * 20));
             });
-            console.log('MP4 conversion complete. Blob size:', mp4Blob.size, 'bytes');
-            downloadBlob = mp4Blob;
-            fileExtension = 'mp4';
-            updatePreviewVideo(mp4Blob, 'mp4');
+
+            if (downloadJobIdRef.current !== jobId) {
+              return;
+            }
+
+            finalBlob = mp4Blob;
+            finalFormat = 'mp4';
+            storeDownloadResult(finalBlob, finalFormat, signature);
           } catch (conversionError) {
             console.error('MP4 conversion failed. Falling back to WebM download.', conversionError);
             addWarning('MP4 conversion failed. Downloading WebM version instead.');
             setProgressMessage('Preparing WebM download...');
-            setProgressValue(90);
+            setProgressValue(95);
           }
         } else {
           console.warn('Browser is not cross-origin isolated. MP4 conversion will be skipped in favour of WebM download.');
           addWarning('MP4 conversion is unavailable in this browser session. A WebM file will be downloaded instead.');
           setProgressMessage('Preparing WebM download...');
-          setProgressValue(90);
+          setProgressValue(95);
         }
       }
 
-      setProgressValue(100);
-
-      const url = URL.createObjectURL(downloadBlob);
+      const url = URL.createObjectURL(finalBlob);
       const a = document.createElement('a');
       a.href = url;
-      a.download = `cinesynth_video_${Date.now()}.${fileExtension}`;
+      a.download = `cinesynth_video_${Date.now()}.${finalFormat}`;
       document.body.appendChild(a);
       a.click();
-      console.log('Download link clicked.');
       document.body.removeChild(a);
       URL.revokeObjectURL(url);
+
       setProgressMessage('Video downloaded!');
       setProgressValue(100);
+      storeDownloadResult(finalBlob, finalFormat, signature);
 
       setTimeout(() => {
-          setProgressMessage('');
-          setProgressValue(0);
+        setProgressMessage('');
+        setProgressValue(0);
       }, 3000);
-
     } catch (err) {
       const errorMessage = err instanceof Error ? err.message : 'An unknown error occurred while rendering video.';
-      console.error("Error rendering video:", err);
+      console.error('Error rendering video:', err);
       setError(errorMessage);
-      if (!window.crossOriginIsolated) {
-        console.error('MP4 conversion failed likely due to missing cross-origin isolation.');
-      }
       setProgressMessage('Error rendering video.');
       setProgressValue(0);
+      setDownloadStatus('error');
     } finally {
       setIsRenderingVideo(false);
+      if (downloadJobIdRef.current === jobId) {
+        setIsPreparingDownloadVideo(false);
+        downloadActiveSignatureRef.current = null;
+      }
     }
   };
   
@@ -521,6 +650,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     // Reset preview to reflect changes
     if (ttsPlaybackStatus !== 'idle') handleTTSStop();
     setPreviewNeedsRefresh(true);
+    markDownloadStale();
   };
 
   const handleDeleteScene = (sceneId: string) => {
@@ -530,6 +660,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
         resetPreviewVideo();
       } else {
         setPreviewNeedsRefresh(true);
+        markDownloadStale();
       }
       return updatedScenes;
     });
@@ -560,6 +691,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     };
     setScenes(prevScenes => [...prevScenes, newScene]);
     setPreviewNeedsRefresh(true);
+    markDownloadStale();
     if (ttsPlaybackStatus !== 'idle') handleTTSStop();
   };
 
@@ -617,6 +749,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
             s.id === sceneId ? { ...s, footageUrl: newFootageUrl, footageType: sceneToUpdate.footageType } : s
         ));
         setPreviewNeedsRefresh(true);
+        markDownloadStale();
         setProgressMessage(errorOccurred ? 'Image updated with placeholder.' : 'Image updated successfully!');
         setProgressValue(100);
 
@@ -635,6 +768,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     setIncludeWatermark(value);
     if (scenes.length > 0) {
       setPreviewNeedsRefresh(true);
+      markDownloadStale();
     }
   };
 
@@ -692,6 +826,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
                 if (scenes.length > 0) {
                     addWarning("Aspect ratio changed. Visuals may need to be updated for existing scenes. Consider regenerating or updating images individually.");
                     setPreviewNeedsRefresh(true);
+                    markDownloadStale();
                 }
               }}
               onGenerate={handleGenerateVideo}
@@ -723,6 +858,8 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
             isGenerating={isGeneratingScenes}
             isDownloading={isRenderingVideo}
             isPreparingVideoFile={isPreparingPreviewVideo}
+            isPreparingDownload={isPreparingDownloadVideo}
+            isDownloadReady={downloadStatus === 'ready'}
             isTTSEnabled={isTTSEnabled}
             onTTSPlay={handleTTSPlay}
             onTTSPause={handleTTSPause}
@@ -731,6 +868,8 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
             ttsPlaybackStatus={ttsPlaybackStatus}
             videoUrl={previewVideoUrl}
             videoFormat={previewVideoFormat}
+            downloadFormat={downloadFormatState}
+            downloadStatus={downloadStatus}
           />
         </div>
         )}
