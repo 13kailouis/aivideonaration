@@ -278,12 +278,16 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
         <div className={`relative w-full ${footageAspectRatioClass} bg-black overflow-hidden rounded-md`}>
           <video
             key={videoUrl}
-            src={videoUrl}
             controls
             playsInline
             loop
+            autoPlay
+            muted
             className="w-full h-full rounded-md"
-          />
+          >
+            <source src={videoUrl} type={`video/${videoFormat}`} />
+            Your browser does not support the video tag.
+          </video>
           {isPreparingVideoFile && (
             <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-sm sm:text-base">
               Updating preview video...
