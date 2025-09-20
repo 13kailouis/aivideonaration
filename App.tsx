@@ -9,7 +9,7 @@ import SceneEditor from './components/SceneEditor.tsx'; // New Component
 import { Scene, AspectRatio, GeminiSceneResponseItem } from './types.ts';
 import { APP_TITLE, DEFAULT_ASPECT_RATIO, API_KEY, IS_PREMIUM_USER } from './constants.ts';
 import { analyzeNarrationWithGemini, generateImageWithImagen } from './services/geminiService.ts';
-import { processNarrationToScenes, fetchPlaceholderFootageUrl } from './services/videoService.ts';
+import { processNarrationToScenes, fetchPlaceholderFootageUrl, normalizeGeminiScenes } from './services/videoService.ts';
 import { generateWebMFromScenes } from './services/videoRenderingService.ts';
 import { convertWebMToMP4 } from './services/mp4ConversionService.ts';
 import { generateAIVideo } from './services/aiVideoGenerationService.ts';
@@ -307,17 +307,18 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     try {
       handleSceneGenerationProgress('Analyzing narration with AI...', 0.5, 'analysis');
       const analysisResults: GeminiSceneResponseItem[] = await analyzeNarrationWithGemini(narrationText);
-      analysisCacheRef.current = analysisResults; // Cache analysis
+      const normalizedAnalysis = normalizeGeminiScenes(analysisResults);
+      analysisCacheRef.current = normalizedAnalysis; // Cache analysis
       handleSceneGenerationProgress('Narration analyzed.', 1, 'analysis');
 
-      if (!analysisResults || analysisResults.length === 0) {
+      if (!normalizedAnalysis || normalizedAnalysis.length === 0) {
         throw new Error("The AI could not segment the narration into scenes. Try rephrasing or adding more detail.");
       }
-      
+
       const processedScenes: Scene[] = await processNarrationToScenes(
-        analysisResults, 
+        normalizedAnalysis,
         aspectRatio,
-        { useAiGeneratedImages: useAiImages }, 
+        { useAiGeneratedImages: useAiImages },
         handleSceneGenerationProgress
       );
       

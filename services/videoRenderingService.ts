@@ -1,10 +1,13 @@
 
 import { Scene, AspectRatio, KenBurnsConfig } from '../types.ts';
 import { WATERMARK_TEXT } from '../constants.ts';
+import { Muxer, ArrayBufferTarget } from 'webm-muxer';
 
 const VIDEO_FPS = 20; // Frames per second for the output video
 const MAX_VIDEO_WIDTH_LANDSCAPE = 1280;
 const MAX_VIDEO_HEIGHT_PORTRAIT = 1280;
+const FRAME_DURATION_US = Math.round(1_000_000 / VIDEO_FPS);
+const WEB_CODECS_CODEC = 'vp09.00.10.08';
 
 // watermark text size relative to canvas height
 const WATERMARK_FONT_HEIGHT_PERCENT = 0.03;
@@ -14,6 +17,12 @@ const INITIAL_RETRY_DELAY_MS = 300;
 const SUGGESTED_VIDEO_BITRATE = 2500000; // 2.5 Mbps
 const MEDIA_RECORDER_TIMESLICE_MS = 100; // Get data every 100ms
 const VIDEO_FRAME_CAPTURE_TIME = 0; // seconds - capture first frame
+
+const hasWebCodecsSupport = (): boolean => {
+  if (typeof window === 'undefined') return false;
+  const w = window as unknown as Record<string, unknown>;
+  return typeof w.VideoEncoder === 'function' && typeof w.VideoFrame === 'function';
+};
 
 interface VideoRenderOptions {
   includeWatermark: boolean;
@@ -245,7 +254,127 @@ async function preloadAllImages(
 }
 
 
-export const generateWebMFromScenes = (
+const generateWebMWithWebCodecs = (
+  scenes: Scene[],
+  aspectRatio: AspectRatio,
+  options: VideoRenderOptions,
+  onProgressCallback?: (progress: number) => void
+): Promise<Blob> => {
+  console.log('[Video Rendering Service] Using WebCodecs accelerated renderer.');
+  return new Promise(async (resolve, reject) => {
+    let encoder: any = null;
+    try {
+      const { width: canvasWidth, height: canvasHeight } = getCanvasDimensions(aspectRatio);
+      const canvas = document.createElement('canvas');
+      canvas.width = canvasWidth;
+      canvas.height = canvasHeight;
+      const ctx = canvas.getContext('2d', { alpha: false });
+
+      if (!ctx) {
+        throw new Error('Failed to get canvas context for WebCodecs video generation.');
+      }
+
+      const updateOverallProgress = (stageProgress: number, stageWeight: number, baseProgress: number) => {
+        if (onProgressCallback) {
+          onProgressCallback(Math.min(0.99, baseProgress + stageProgress * stageWeight));
+        }
+      };
+
+      const preloadedImages = await preloadAllImages(scenes, (_msg, val) => {
+        updateOverallProgress(val, 0.2, 0);
+      });
+
+      const imageMap = new Map<string, HTMLImageElement>();
+      preloadedImages.forEach(item => imageMap.set(item.sceneId, item.image));
+
+      const muxerTarget = new ArrayBufferTarget();
+      const muxer = new Muxer({
+        target: muxerTarget,
+        video: {
+          codec: 'V_VP9',
+          width: canvasWidth,
+          height: canvasHeight,
+          frameRate: VIDEO_FPS,
+          alpha: false,
+        },
+      });
+
+      const VideoEncoderCtor = (window as unknown as Record<string, any>).VideoEncoder;
+      const VideoFrameCtor = (window as unknown as Record<string, any>).VideoFrame;
+
+      if (!VideoEncoderCtor || !VideoFrameCtor) {
+        throw new Error('WebCodecs API is unavailable in this browser.');
+      }
+
+      encoder = new VideoEncoderCtor({
+        output: (chunk: any, meta?: any) => {
+          muxer.addVideoChunk(chunk, meta);
+        },
+        error: (error: any) => {
+          reject(new Error(`VideoEncoder error: ${(error && (error.message || error.name)) || 'unknown'}`));
+        },
+      });
+
+      encoder.configure({
+        codec: WEB_CODECS_CODEC,
+        width: canvasWidth,
+        height: canvasHeight,
+        bitrate: SUGGESTED_VIDEO_BITRATE,
+        framerate: VIDEO_FPS,
+        latencyMode: 'quality',
+      });
+
+      let totalFramesRenderedOverall = 0;
+      const totalFramesToRenderOverall = scenes.reduce((acc, scene) => acc + Math.max(1, Math.round(scene.duration * VIDEO_FPS)), 0);
+
+      for (const scene of scenes) {
+        const img = imageMap.get(scene.id);
+        if (!img) {
+          throw new Error(`Internal error: Preloaded image missing for scene ${scene.id}`);
+        }
+
+        const numFramesForScene = Math.max(1, Math.round(scene.duration * VIDEO_FPS));
+        for (let frameIndex = 0; frameIndex < numFramesForScene; frameIndex++) {
+          const progressInThisScene = numFramesForScene <= 1 ? 1 : frameIndex / (numFramesForScene - 1);
+          drawImageWithKenBurns(ctx, img, canvasWidth, canvasHeight, progressInThisScene, scene.kenBurnsConfig);
+          if (options.includeWatermark) {
+            drawWatermark(ctx, canvasWidth, canvasHeight, WATERMARK_TEXT);
+          }
+
+          const timestamp = totalFramesRenderedOverall * FRAME_DURATION_US;
+          const frame = new VideoFrameCtor(canvas, { timestamp, duration: FRAME_DURATION_US });
+          encoder.encode(frame);
+          frame.close();
+
+          totalFramesRenderedOverall++;
+          if (totalFramesToRenderOverall > 0) {
+            updateOverallProgress(totalFramesRenderedOverall / totalFramesToRenderOverall, 0.79, 0.20);
+          }
+        }
+      }
+
+      await encoder.flush();
+      encoder.close();
+      muxer.finalize();
+
+      if (onProgressCallback) onProgressCallback(1);
+      resolve(new Blob([muxerTarget.buffer], { type: 'video/webm' }));
+    } catch (error) {
+      reject(error instanceof Error ? error : new Error(String(error)));
+    } finally {
+      if (encoder && encoder.state !== 'closed') {
+        try {
+          encoder.close();
+        } catch (_err) {
+          // ignore cleanup error
+        }
+      }
+    }
+  });
+};
+
+
+const generateWebMWithMediaRecorder = (
   scenes: Scene[],
   aspectRatio: AspectRatio,
   options: VideoRenderOptions,
@@ -438,4 +567,20 @@ export const generateWebMFromScenes = (
       }
     }
   });
+};
+
+export const generateWebMFromScenes = (
+  scenes: Scene[],
+  aspectRatio: AspectRatio,
+  options: VideoRenderOptions,
+  onProgressCallback?: (progress: number) => void
+): Promise<Blob> => {
+  if (hasWebCodecsSupport()) {
+    return generateWebMWithWebCodecs(scenes, aspectRatio, options, onProgressCallback).catch(error => {
+      console.warn('[Video Rendering Service] WebCodecs renderer failed, falling back to MediaRecorder.', error);
+      return generateWebMWithMediaRecorder(scenes, aspectRatio, options, onProgressCallback);
+    });
+  }
+
+  return generateWebMWithMediaRecorder(scenes, aspectRatio, options, onProgressCallback);
 };

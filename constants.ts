@@ -2,6 +2,8 @@
 export const APP_TITLE = "CineSynth";
 export const DEFAULT_ASPECT_RATIO = '16:9';
 export const AVERAGE_WORDS_PER_SECOND = 3; // Fallback if Gemini doesn't provide duration
+export const MAX_SCENE_DURATION_SECONDS = 15; // Encourage dynamic pacing
+export const MIN_SCENE_DURATION_SECONDS = 4;
 
 export const FALLBACK_FOOTAGE_KEYWORDS = [
   "abstract", "cityscape", "nature", "technology", "office", "landscape", "motion graphics"
