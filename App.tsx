@@ -39,6 +39,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
   const [previewVideoFormat, setPreviewVideoFormat] = useState<'webm' | 'mp4'>('webm');
   const [isPreparingPreviewVideo, setIsPreparingPreviewVideo] = useState<boolean>(false);
   const [previewNeedsRefresh, setPreviewNeedsRefresh] = useState<boolean>(false);
+  const [browserSupportsWebM, setBrowserSupportsWebM] = useState<boolean>(true);
 
   const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(premiumUser);
   const [ttsPlaybackStatus, setTTSPlaybackStatus] = useState<'idle' | 'playing' | 'paused' | 'ended'>('idle');
@@ -108,10 +109,20 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
       setError("Critical: Gemini API Key is missing. Please set the API_KEY environment variable for AI features to work. The application will not function correctly without it.");
     }
     if (typeof window.speechSynthesis === 'undefined') {
-      setIsTTSEnabled(false); 
+      setIsTTSEnabled(false);
       console.warn("SpeechSynthesis API not supported in this browser. TTS feature disabled.");
     }
-    
+
+    if (typeof document !== 'undefined') {
+      const testVideo = document.createElement('video');
+      const canPlayWebM = Boolean(
+        testVideo.canPlayType('video/webm; codecs="vp9"') ||
+        testVideo.canPlayType('video/webm; codecs="vp8, vorbis"') ||
+        testVideo.canPlayType('video/webm')
+      );
+      setBrowserSupportsWebM(canPlayWebM);
+    }
+
     return () => {
       if (window.speechSynthesis && window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
@@ -156,7 +167,42 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
         return null;
       }
 
-      updatePreviewVideo(webmBlob, 'webm');
+      let previewBlob: Blob = webmBlob;
+      let previewFormat: 'webm' | 'mp4' = 'webm';
+
+      if (!browserSupportsWebM) {
+        const canAttemptConversion = typeof window !== 'undefined' && window.crossOriginIsolated;
+        if (canAttemptConversion) {
+          setProgressMessage('Converting preview to MP4 for playback...');
+          try {
+            const mp4Blob = await convertWebMToMP4(webmBlob, (convProg) => {
+              if (previewRenderTokenRef.current !== token) {
+                return;
+              }
+              setProgressMessage(`Converting preview to MP4: ${Math.round(convProg * 100)}%`);
+              setProgressValue(80 + Math.round(convProg * 20));
+            });
+
+            if (previewRenderTokenRef.current === token) {
+              previewBlob = mp4Blob;
+              previewFormat = 'mp4';
+            }
+          } catch (conversionError) {
+            if (previewRenderTokenRef.current === token) {
+              console.error('Preview MP4 conversion failed. Falling back to WebM preview.', conversionError);
+              addWarning('Preview video could not be converted to MP4 automatically. Use the download button to convert if playback fails.');
+            }
+          }
+        } else if (previewRenderTokenRef.current === token) {
+          addWarning('This browser cannot play WebM previews. Use Download Video to convert the file to MP4.');
+        }
+      }
+
+      if (previewRenderTokenRef.current !== token) {
+        return null;
+      }
+
+      updatePreviewVideo(previewBlob, previewFormat);
       setProgressMessage('Preview video ready!');
       setProgressValue(100);
 
@@ -167,7 +213,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
         }
       }, 2500);
 
-      return webmBlob;
+      return previewBlob;
     } catch (error) {
       if (previewRenderTokenRef.current === token) {
         console.error('Error rendering preview video file:', error);
@@ -181,7 +227,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
         setIsPreparingPreviewVideo(false);
       }
     }
-  }, [addWarning, includeWatermark, isRenderingVideo, updatePreviewVideo]);
+  }, [addWarning, browserSupportsWebM, includeWatermark, isRenderingVideo, updatePreviewVideo]);
 
   useEffect(() => {
     if (!previewNeedsRefresh) {
