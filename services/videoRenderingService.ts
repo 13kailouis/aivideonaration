@@ -3,8 +3,7 @@ import { Scene, AspectRatio, KenBurnsConfig } from '../types.ts';
 import { WATERMARK_TEXT } from '../constants.ts';
 import { Muxer as WebMMuxer, ArrayBufferTarget as WebMArrayBufferTarget } from 'webm-muxer';
 import { Muxer as Mp4Muxer, ArrayBufferTarget as Mp4ArrayBufferTarget } from 'mp4-muxer';
-
-type RenderMode = 'preview' | 'download';
+import { buildRenderPlan, RenderMode } from './renderTiming.ts';
 
 interface RenderConfig {
   fps: number;
@@ -30,7 +29,7 @@ const RENDER_CONFIG: Record<RenderMode, RenderConfig> = {
 
 const getRenderConfig = (mode: RenderMode): RenderConfig => RENDER_CONFIG[mode] ?? RENDER_CONFIG.preview;
 
-const WEB_CODECS_VP9_CODEC = 'vp09.00.10.08';
+const WEB_CODECS_WEBM_CODEC_CANDIDATES = ['vp09.00.10.08', 'vp8'] as const;
 const MP4_CODEC_CANDIDATES = ['avc1.640028', 'avc1.4D4028', 'avc1.42E01E'] as const;
 const MP4_MIMETYPE = 'video/mp4';
 const WEBM_MIMETYPE = 'video/webm';
@@ -519,6 +518,17 @@ const generateVideoWithWebCodecs = (
       const imageMap = new Map<string, PreloadedImage>();
       preloadedImages.forEach(item => imageMap.set(item.sceneId, item));
 
+      const mode = options.mode ?? 'preview';
+      const renderPlan = buildRenderPlan(scenes, config.fps, mode);
+      const totalFramesToRenderOverall = renderPlan.reduce((acc, item) => acc + item.frameCount, 0);
+
+      if (mode === 'preview') {
+        const totalPlannedDurationSeconds = renderPlan.reduce((acc, item) => acc + item.durationSeconds, 0);
+        console.log(
+          `[Video Rendering Service] Preview duration limited to ${totalPlannedDurationSeconds.toFixed(2)}s across ${renderPlan.length} scenes.`,
+        );
+      }
+
       const videoEncoderAccess = window as unknown as {
         VideoEncoder?: typeof VideoEncoder;
         VideoFrame?: typeof VideoFrame;
@@ -530,22 +540,24 @@ const generateVideoWithWebCodecs = (
         throw new Error('WebCodecs API is unavailable in this browser.');
       }
 
-      const baseEncoderConfig: VideoEncoderConfig = {
-        codec: WEB_CODECS_VP9_CODEC,
+      const createBaseEncoderConfig = (codec: string): VideoEncoderConfig => ({
+        codec,
         width: canvasWidth,
         height: canvasHeight,
         bitrate: config.bitrate,
         framerate: config.fps,
         latencyMode: 'quality',
         hardwareAcceleration: 'prefer-hardware',
-      };
+      });
+
+      const defaultEncoderConfig = createBaseEncoderConfig(WEB_CODECS_WEBM_CODEC_CANDIDATES[0]);
 
       type ChunkWriter = (chunk: EncodedVideoChunk, meta?: EncodedVideoChunkMetadata) => void;
       let addVideoChunk: ChunkWriter | null = null;
       let finalizeMuxer: (() => Blob) | null = null;
       let chosenFormat: 'webm' | 'mp4' = 'webm';
       let chosenMimeType = WEBM_MIMETYPE;
-      let encoderConfig: VideoEncoderConfig = { ...baseEncoderConfig };
+      let encoderConfig: VideoEncoderConfig = { ...defaultEncoderConfig };
 
       const isConfigSupportedFn =
         typeof (VideoEncoderCtor as typeof VideoEncoder).isConfigSupported === 'function'
@@ -555,7 +567,7 @@ const generateVideoWithWebCodecs = (
       if (options.mode === 'download' && isConfigSupportedFn) {
         for (const codec of MP4_CODEC_CANDIDATES) {
           const candidateConfig: VideoEncoderConfig = {
-            ...baseEncoderConfig,
+            ...defaultEncoderConfig,
             codec,
           };
           try {
@@ -624,27 +636,46 @@ const generateVideoWithWebCodecs = (
         chosenFormat = 'webm';
         chosenMimeType = WEBM_MIMETYPE;
 
+        let selectedCodec = encoderConfig.codec ?? defaultEncoderConfig.codec;
         if (isConfigSupportedFn) {
-          try {
-            const support = await isConfigSupportedFn(baseEncoderConfig);
-            if (support.supported) {
-              encoderConfig = {
-                ...baseEncoderConfig,
-                ...support.config,
-                codec: support.config.codec ?? baseEncoderConfig.codec,
-                width: support.config.width ?? canvasWidth,
-                height: support.config.height ?? canvasHeight,
-                bitrate: support.config.bitrate ?? baseEncoderConfig.bitrate,
-                framerate: support.config.framerate ?? baseEncoderConfig.framerate,
-                hardwareAcceleration:
-                  support.config.hardwareAcceleration ?? baseEncoderConfig.hardwareAcceleration,
-                latencyMode: support.config.latencyMode ?? baseEncoderConfig.latencyMode,
-              };
+          let configured = false;
+          for (const codec of WEB_CODECS_WEBM_CODEC_CANDIDATES) {
+            const candidateConfig = createBaseEncoderConfig(codec);
+            try {
+              const support = await isConfigSupportedFn(candidateConfig);
+              if (support.supported) {
+                encoderConfig = {
+                  ...candidateConfig,
+                  ...support.config,
+                  codec: support.config.codec ?? candidateConfig.codec,
+                  width: support.config.width ?? canvasWidth,
+                  height: support.config.height ?? canvasHeight,
+                  bitrate: support.config.bitrate ?? candidateConfig.bitrate,
+                  framerate: support.config.framerate ?? candidateConfig.framerate,
+                  hardwareAcceleration:
+                    support.config.hardwareAcceleration ?? candidateConfig.hardwareAcceleration,
+                  latencyMode: support.config.latencyMode ?? candidateConfig.latencyMode,
+                };
+                selectedCodec = encoderConfig.codec ?? codec;
+                configured = true;
+                break;
+              }
+            } catch (error) {
+              console.warn(`[Video Rendering Service] WebM codec ${codec} validation failed, trying next candidate.`, error);
             }
-          } catch (error) {
-            console.warn('[Video Rendering Service] Unable to validate VP9 encoder config, using defaults.', error);
           }
+
+          if (!configured) {
+            encoderConfig = { ...defaultEncoderConfig };
+            selectedCodec = encoderConfig.codec ?? defaultEncoderConfig.codec;
+            console.warn('[Video Rendering Service] Falling back to default WebM encoder configuration.');
+          }
+        } else {
+          encoderConfig = { ...defaultEncoderConfig };
+          selectedCodec = encoderConfig.codec ?? defaultEncoderConfig.codec;
         }
+
+        console.log('[Video Rendering Service] WebM WebCodecs pipeline selected with codec', selectedCodec);
       }
 
       if (!addVideoChunk || !finalizeMuxer) {
@@ -683,19 +714,16 @@ const generateVideoWithWebCodecs = (
       );
 
       let totalFramesRenderedOverall = 0;
-      const totalFramesToRenderOverall = scenes.reduce(
-        (acc, scene) => acc + Math.max(1, Math.round(scene.duration * config.fps)),
-        0,
-      );
 
-      for (const scene of scenes) {
+      for (const planItem of renderPlan) {
+        const { scene, frameCount } = planItem;
         throwIfAborted(signal);
         const img = imageMap.get(scene.id);
         if (!img) {
           throw new Error(`Internal error: Preloaded image missing for scene ${scene.id}`);
         }
 
-        const numFramesForScene = Math.max(1, Math.round(scene.duration * config.fps));
+        const numFramesForScene = frameCount;
         for (let frameIndex = 0; frameIndex < numFramesForScene; frameIndex++) {
           throwIfAborted(signal);
           const progressInThisScene = numFramesForScene <= 1 ? 1 : frameIndex / (numFramesForScene - 1);
@@ -846,6 +874,17 @@ const generateWebMWithMediaRecorder = (
 
       throwIfAborted(signal);
 
+      const mode = options.mode ?? 'preview';
+      const renderPlan = buildRenderPlan(scenes, config.fps, mode);
+      const totalFramesToRenderOverall = renderPlan.reduce((acc, item) => acc + item.frameCount, 0);
+
+      if (mode === 'preview') {
+        const totalPlannedDurationSeconds = renderPlan.reduce((acc, item) => acc + item.durationSeconds, 0);
+        console.log(
+          `[Video Rendering Service] Preview duration limited to ${totalPlannedDurationSeconds.toFixed(2)}s across ${renderPlan.length} scenes.`,
+        );
+      }
+
       stream = canvas.captureStream(config.fps);
       console.log(`[Video Rendering Service] Canvas stream captured at ${config.fps} FPS.`);
 
@@ -955,19 +994,15 @@ const generateWebMWithMediaRecorder = (
       let currentSceneIndex = 0;
       let currentFrameInScene = 0;
       let totalFramesRenderedOverall = 0;
-      const totalFramesToRenderOverall = scenes.reduce(
-        (acc, scene) => acc + Math.max(1, Math.round(scene.duration * config.fps)),
-        0,
-      );
 
-      console.log(`[Video Rendering Service] Starting requestAnimationFrame loop. Total scenes: ${scenes.length}, Total frames to render: ${totalFramesToRenderOverall}`);
+      console.log(`[Video Rendering Service] Starting requestAnimationFrame loop. Total scenes: ${renderPlan.length}, Total frames to render: ${totalFramesToRenderOverall}`);
 
       const renderFrame = () => {
         if (settled || aborted || signal?.aborted) {
           return;
         }
 
-        if (currentSceneIndex >= scenes.length) {
+        if (currentSceneIndex >= renderPlan.length) {
           if (mediaRecorder && mediaRecorder.state === 'recording') {
             try {
               mediaRecorder.stop();
@@ -991,7 +1026,8 @@ const generateWebMWithMediaRecorder = (
           return;
         }
 
-        const scene = scenes[currentSceneIndex];
+        const planItem = renderPlan[currentSceneIndex];
+        const scene = planItem.scene;
         const preloadedImgData = preloadedImageMap.get(scene.id);
 
         if (!preloadedImgData) {
@@ -1006,7 +1042,7 @@ const generateWebMWithMediaRecorder = (
           return;
         }
 
-        const numFramesForThisScene = Math.max(1, Math.round(scene.duration * config.fps));
+        const numFramesForThisScene = planItem.frameCount;
         const progressInThisScene = numFramesForThisScene <= 1 ? 1 : currentFrameInScene / (numFramesForThisScene - 1);
 
         try {

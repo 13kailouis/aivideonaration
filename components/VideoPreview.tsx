@@ -1,7 +1,8 @@
 
-import React, { useState, useEffect, useRef } from 'react';
+import React, { useState, useEffect, useRef, useMemo } from 'react';
 import { Scene, AspectRatio } from '../types.ts';
 import { PlayIcon, PauseIcon, DownloadIcon } from './IconComponents.tsx';
+import { computePreviewPlaybackPlan, PREVIEW_MAX_TOTAL_DURATION_SECONDS } from '../services/renderTiming.ts';
 
 const FADE_DURATION_MS = 1000; // 1 second for cross-fade
 
@@ -71,11 +72,41 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
   ]);
   const [activeSlotIndex, setActiveSlotIndex] = useState(0);
 
+  const { durationsMs: previewDurationsMs, totalDurationMs: previewTotalDurationMs } = useMemo(
+    () => computePreviewPlaybackPlan(scenes),
+    [scenes],
+  );
+  const originalTotalDurationMs = useMemo(
+    () => scenes.reduce((sum, scene) => sum + Math.max(0, scene.duration) * 1000, 0),
+    [scenes],
+  );
+  const previewIsAccelerated = previewTotalDurationMs > 0 && originalTotalDurationMs > previewTotalDurationMs + 1;
+  const resolveSceneDurationMs = (index: number): number => {
+    if (index < 0 || index >= scenes.length) {
+      return 0;
+    }
+    const planned = previewDurationsMs[index];
+    if (typeof planned === 'number' && planned > 0) {
+      return planned;
+    }
+    return Math.max(0, scenes[index].duration) * 1000;
+  };
+  const formatSeconds = (value: number): string => {
+    if (!Number.isFinite(value) || value <= 0) {
+      return '0.0';
+    }
+    return value >= 10 ? Math.round(value).toString() : value.toFixed(1);
+  };
+
   const sceneTimeoutRef = useRef<number | null>(null);
   const progressIntervalRef = useRef<number | null>(null);
   const animationTriggerFrameRef = useRef<number | null>(null);
 
   const currentScene = scenes[currentSceneIndex];
+  const currentSceneDurationMs = resolveSceneDurationMs(currentSceneIndex);
+  const previewElapsedSeconds = currentSceneDurationMs > 0 ? Math.min(elapsedTime, currentSceneDurationMs) / 1000 : 0;
+  const previewSceneSeconds = currentSceneDurationMs / 1000;
+  const originalSceneSeconds = currentScene ? Math.max(0, currentScene.duration) : 0;
 
   useEffect(() => {
     if (!videoUrl) {
@@ -132,7 +163,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
 
     const primarySlot = activeSlotIndex;
     const secondarySlot = 1 - activeSlotIndex;
-    const sceneDurationMs = currentScene.duration * 1000;
+    const sceneDurationMs = resolveSceneDurationMs(currentSceneIndex);
     const kbConfig = currentScene.kenBurnsConfig; // Use stored config
 
     const initialCSSTransform = `scale(1) translate(0%, 0%)`;
@@ -256,7 +287,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
     setIsPlaying(newIsPlaying);
 
     if (newIsPlaying) {
-        if (currentSceneIndex === scenes.length - 1 && elapsedTime >= (currentScene?.duration || 0) * 1000) {
+        if (currentSceneIndex === scenes.length - 1 && elapsedTime >= resolveSceneDurationMs(currentSceneIndex)) {
             handleRestart(); 
         } else {
            if (ttsPlaybackStatus === 'paused') onTTSResume();
@@ -371,8 +402,10 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
     );
   }
 
-  const totalDuration = scenes.reduce((sum, s) => sum + s.duration, 0);
-  const playedDuration = scenes.slice(0, currentSceneIndex).reduce((sum, s) => sum + s.duration, 0) + (elapsedTime / 1000);
+  const previewTotalDurationSeconds = previewTotalDurationMs / 1000;
+  const previewPlayedDurationSeconds =
+    previewDurationsMs.slice(0, currentSceneIndex).reduce((sum, duration) => sum + duration, 0) / 1000 +
+    (currentSceneDurationMs > 0 ? Math.min(elapsedTime, currentSceneDurationMs) / 1000 : 0);
 
   return (
     <div className="bg-neutral-900 border border-neutral-700 p-1 sm:p-2 rounded-lg shadow-xl">
@@ -403,12 +436,26 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
           ) : null
         ))}
         {currentScene && isPlaying && (
-            <div className="absolute top-0 left-0 h-1 bg-white transition-all duration-100 ease-linear" style={{ width: `${(elapsedTime / ((currentScene?.duration || 1) * 1000)) * 100}%` }}></div>
+            <div
+              className="absolute top-0 left-0 h-1 bg-white transition-all duration-100 ease-linear"
+              style={{ width: `${currentSceneDurationMs > 0 ? (Math.min(elapsedTime, currentSceneDurationMs) / currentSceneDurationMs) * 100 : 0}%` }}
+            ></div>
         )}
       </div>
       {scenes.length > 0 && (
         <div className="mt-2 h-2 bg-neutral-800 rounded-full overflow-hidden">
-          <div className="h-full bg-white" style={{ width: `${totalDuration > 0 ? (playedDuration / totalDuration) * 100 : 0}%`, transition: playedDuration > 0 ? 'width 0.1s linear' : 'none' }}></div>
+          <div
+            className="h-full bg-white"
+            style={{
+              width: `${previewTotalDurationSeconds > 0 ? (previewPlayedDurationSeconds / previewTotalDurationSeconds) * 100 : 0}%`,
+              transition: previewPlayedDurationSeconds > 0 ? 'width 0.1s linear' : 'none',
+            }}
+          ></div>
+        </div>
+      )}
+      {previewIsAccelerated && (
+        <div className="mt-1 text-[10px] sm:text-xs text-gray-500">
+          Preview fast-forwarded to finish within {PREVIEW_MAX_TOTAL_DURATION_SECONDS}s.
         </div>
       )}
       <div className="mt-3 flex items-center justify-between space-x-2">
@@ -432,9 +479,9 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
         </div>
         <div className="text-xs sm:text-sm text-gray-400 truncate">
           {currentScene ? `Scene ${currentSceneIndex + 1}/${scenes.length}` : (scenes.length > 0 ? `Ready` : `No video`)}
-          {currentScene && isPlaying && ` (${Math.ceil(elapsedTime/1000)}s / ${currentScene.duration}s)`}
+          {currentScene && isPlaying && ` (Preview ${formatSeconds(previewElapsedSeconds)}s / ${formatSeconds(previewSceneSeconds)}s${previewIsAccelerated ? ` · Original ${formatSeconds(originalSceneSeconds)}s` : ''})`}
           {currentScene && ttsPlaybackStatus === 'playing' && isTTSEnabled && <span className="ml-1 animate-pulse">(🔊)</span>}
-          {!isPlaying && scenes.length > 0 && currentSceneIndex === scenes.length -1 && elapsedTime >= (currentScene?.duration || 0) * 1000 && " Ended"}
+          {!isPlaying && scenes.length > 0 && currentSceneIndex === scenes.length -1 && elapsedTime >= resolveSceneDurationMs(currentSceneIndex) && " Ended"}
         </div>
         <button
           onClick={onDownloadRequest}
