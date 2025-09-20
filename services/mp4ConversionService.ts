@@ -18,6 +18,65 @@ const getFFmpegInstance = async (): Promise<FFmpeg> => {
   return ffmpegInstance;
 };
 
+interface ConversionStrategy {
+  description: string;
+  args: string[];
+}
+
+const buildConversionStrategies = (inputFileName: string, outputFileName: string): ConversionStrategy[] => [
+  {
+    description: 'stream copy remux',
+    args: [
+      '-y',
+      '-i',
+      inputFileName,
+      '-c',
+      'copy',
+      '-movflags',
+      'faststart',
+      outputFileName,
+    ],
+  },
+  {
+    description: 'stream copy with AAC audio',
+    args: [
+      '-y',
+      '-i',
+      inputFileName,
+      '-c:v',
+      'copy',
+      '-c:a',
+      'aac',
+      '-b:a',
+      '192k',
+      '-movflags',
+      'faststart',
+      outputFileName,
+    ],
+  },
+  {
+    description: 'fallback x264 transcode',
+    args: [
+      '-y',
+      '-i',
+      inputFileName,
+      '-c:v',
+      'libx264',
+      '-preset',
+      'ultrafast',
+      '-pix_fmt',
+      'yuv420p',
+      '-c:a',
+      'aac',
+      '-b:a',
+      '192k',
+      '-movflags',
+      'faststart',
+      outputFileName,
+    ],
+  },
+];
+
 export const convertWebMToMP4 = async (
   webmBlob: Blob,
   onProgress?: (progress: number) => void
@@ -38,20 +97,32 @@ export const convertWebMToMP4 = async (
 
   try {
     await ffmpeg.writeFile(inputFileName, await fetchFile(webmBlob));
-    await ffmpeg.exec([
-      '-y',
-      '-i',
-      inputFileName,
-      '-c:v',
-      'libx264',
-      '-preset',
-      'ultrafast',
-      '-pix_fmt',
-      'yuv420p',
-      outputFileName,
-    ]);
-    const data = await ffmpeg.readFile(outputFileName);
-    return new Blob([data], { type: 'video/mp4' });
+
+    const strategies = buildConversionStrategies(inputFileName, outputFileName);
+    let lastError: unknown = null;
+
+    for (const strategy of strategies) {
+      try {
+        await ffmpeg.exec(strategy.args);
+        const data = await ffmpeg.readFile(outputFileName);
+        if (onProgress) {
+          onProgress(1);
+        }
+        return new Blob([data], { type: 'video/mp4' });
+      } catch (strategyError) {
+        lastError = strategyError;
+        console.warn(`FFmpeg ${strategy.description} failed, trying next strategy.`, strategyError);
+        try {
+          await (ffmpeg as any).deleteFile?.(outputFileName);
+        } catch (cleanupError) {
+          console.warn('Failed to delete output file after unsuccessful conversion attempt.', cleanupError);
+        }
+      }
+    }
+
+    throw lastError instanceof Error
+      ? lastError
+      : new Error('Unknown error while converting WebM to MP4.');
   } finally {
     if (onProgress && typeof (ffmpeg as any).off === 'function') {
       (ffmpeg as any).off('progress', handleProgress);
