@@ -3,7 +3,7 @@
 import React, { useState, useCallback, useEffect, useRef } from 'react';
 import TextInputArea from './components/TextInputArea.tsx';
 import Controls from './components/Controls.tsx';
-import VideoPreview from './components/VideoPreview.tsx';
+import VideoOutputPanel from './components/VideoOutputPanel.tsx';
 import ProgressBar from './components/ProgressBar.tsx';
 import SceneEditor from './components/SceneEditor.tsx'; // New Component
 import { Scene, AspectRatio, GeminiSceneResponseItem } from './types.ts';
@@ -34,71 +34,21 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
   const [useAiImages, setUseAiImages] = useState<boolean>(false);
   const [useAiVideo, setUseAiVideo] = useState<boolean>(false);
 
-  const [previewVideoBlob, setPreviewVideoBlob] = useState<Blob | null>(null);
-  const [previewVideoUrl, setPreviewVideoUrl] = useState<string | null>(null);
-  const [previewVideoFormat, setPreviewVideoFormat] = useState<'webm' | 'mp4'>('webm');
-  const [isPreparingPreviewVideo, setIsPreparingPreviewVideo] = useState<boolean>(false);
-  const [previewNeedsRefresh, setPreviewNeedsRefresh] = useState<boolean>(false);
-  const [browserSupportsWebM, setBrowserSupportsWebM] = useState<boolean>(true);
-
   const [downloadVideoBlob, setDownloadVideoBlob] = useState<Blob | null>(null);
   const [downloadVideoFormat, setDownloadVideoFormat] = useState<'webm' | 'mp4'>('webm');
   const [isPreparingDownloadVideo, setIsPreparingDownloadVideo] = useState<boolean>(false);
   const [downloadNeedsRefresh, setDownloadNeedsRefresh] = useState<boolean>(false);
+  const [autoDownloadQueued, setAutoDownloadQueued] = useState<boolean>(false);
 
   const [isTTSEnabled, setIsTTSEnabled] = useState<boolean>(premiumUser);
   const [ttsPlaybackStatus, setTTSPlaybackStatus] = useState<'idle' | 'playing' | 'paused' | 'ended'>('idle');
   const currentSpeechRef = useRef<SpeechSynthesisUtterance | null>(null);
   const analysisCacheRef = useRef<GeminiSceneResponseItem[] | null>(null);
-  const previewRenderTokenRef = useRef(0);
-  const previewRenderPromiseRef = useRef<Promise<Blob | null> | null>(null);
-  const previewVideoBlobRef = useRef<Blob | null>(null);
-  const previewVideoFormatRef = useRef<'webm' | 'mp4'>('webm');
-  const previewVideoUrlRef = useRef<string | null>(null);
 
   const downloadRenderTokenRef = useRef(0);
   const downloadRenderPromiseRef = useRef<Promise<Blob | null> | null>(null);
   const downloadVideoBlobRef = useRef<Blob | null>(null);
   const downloadVideoFormatRef = useRef<'webm' | 'mp4'>('webm');
-
-  const showPreview = scenes.length > 0 || isGeneratingScenes || isRenderingVideo;
-  const [previewMounted, setPreviewMounted] = useState(showPreview);
-
-  useEffect(() => {
-    if (showPreview) {
-      setPreviewMounted(true);
-    } else {
-      const t = setTimeout(() => setPreviewMounted(false), 300);
-      return () => clearTimeout(t);
-    }
-  }, [showPreview]);
-
-  useEffect(() => {
-    return () => {
-      if (previewVideoUrlRef.current) {
-        URL.revokeObjectURL(previewVideoUrlRef.current);
-      }
-    };
-  }, []);
-
-  const updatePreviewVideo = useCallback((blob: Blob | null, format: 'webm' | 'mp4') => {
-    previewVideoBlobRef.current = blob;
-    previewVideoFormatRef.current = format;
-    setPreviewVideoBlob(blob);
-    setPreviewVideoFormat(format);
-    setPreviewVideoUrl(prevUrl => {
-      if (prevUrl) {
-        URL.revokeObjectURL(prevUrl);
-      }
-      if (!blob) {
-        previewVideoUrlRef.current = null;
-        return null;
-      }
-      const newUrl = URL.createObjectURL(blob);
-      previewVideoUrlRef.current = newUrl;
-      return newUrl;
-    });
-  }, []);
 
   const updateDownloadVideo = useCallback((blob: Blob | null, format: 'webm' | 'mp4') => {
     downloadVideoBlobRef.current = blob;
@@ -115,16 +65,10 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     updateDownloadVideo(null, 'webm');
   }, [updateDownloadVideo]);
 
-  const resetPreviewVideo = useCallback(() => {
-    previewRenderTokenRef.current += 1;
-    if (previewRenderPromiseRef.current) {
-      previewRenderPromiseRef.current = null;
-    }
-    setIsPreparingPreviewVideo(false);
-    setPreviewNeedsRefresh(false);
-    updatePreviewVideo(null, 'webm');
+  const resetRenderedVideoState = useCallback(() => {
     resetDownloadVideo();
-  }, [resetDownloadVideo, updatePreviewVideo]);
+    setAutoDownloadQueued(false);
+  }, [resetDownloadVideo, setAutoDownloadQueued]);
 
   const invalidateDownloadVideo = useCallback(() => {
     if (isRenderingVideo) {
@@ -135,7 +79,8 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     setDownloadNeedsRefresh(true);
   }, [isRenderingVideo, resetDownloadVideo]);
 
-  const gridColsClass = showPreview ? 'lg:grid-cols-2' : 'lg:grid-cols-1';
+  const showOutputPanel = scenes.length > 0 || isGeneratingScenes || isRenderingVideo;
+  const gridColsClass = showOutputPanel ? 'lg:grid-cols-2' : 'lg:grid-cols-1';
 
 
   useEffect(() => {
@@ -148,16 +93,6 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
       console.warn("SpeechSynthesis API not supported in this browser. TTS feature disabled.");
     }
 
-    if (typeof document !== 'undefined') {
-      const testVideo = document.createElement('video');
-      const canPlayWebM = Boolean(
-        testVideo.canPlayType('video/webm; codecs="vp9"') ||
-        testVideo.canPlayType('video/webm; codecs="vp8, vorbis"') ||
-        testVideo.canPlayType('video/webm')
-      );
-      setBrowserSupportsWebM(canPlayWebM);
-    }
-
     return () => {
       if (window.speechSynthesis && window.speechSynthesis.speaking) {
         window.speechSynthesis.cancel();
@@ -168,102 +103,6 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
   const addWarning = useCallback((message: string) => {
     setWarnings(prev => [...prev, message]);
   }, []);
-
-  const renderPreviewVideo = useCallback(async (
-    scenesToRender: Scene[],
-    ratio: AspectRatio,
-    token: number
-  ): Promise<Blob | null> => {
-    if (scenesToRender.length === 0) {
-      return null;
-    }
-
-    setIsPreparingPreviewVideo(true);
-    setProgressMessage('Rendering preview video file...');
-    setProgressValue(0);
-
-    try {
-      const generatedVideo = await generateWebMFromScenes(
-        scenesToRender,
-        ratio,
-        { includeWatermark, mode: 'preview' },
-        (p) => {
-          if (previewRenderTokenRef.current !== token) {
-            return;
-          }
-          setProgressValue(Math.round(p * 100));
-          if (p < 1) {
-            setProgressMessage('Rendering preview video file...');
-          }
-        }
-      );
-
-      if (previewRenderTokenRef.current !== token) {
-        return null;
-      }
-
-      let previewBlob: Blob = generatedVideo.blob;
-      let previewFormat: 'webm' | 'mp4' = generatedVideo.format;
-
-      if (previewFormat === 'webm' && !browserSupportsWebM) {
-        const canAttemptConversion = typeof window !== 'undefined' && window.crossOriginIsolated;
-        if (canAttemptConversion) {
-          setProgressMessage('Converting preview to MP4 for playback...');
-          try {
-            const mp4Blob = await convertWebMToMP4(generatedVideo.blob, (convProg) => {
-              if (previewRenderTokenRef.current !== token) {
-                return;
-              }
-              setProgressMessage(`Converting preview to MP4: ${Math.round(convProg * 100)}%`);
-              setProgressValue(80 + Math.round(convProg * 20));
-            });
-
-            if (previewRenderTokenRef.current === token) {
-              previewBlob = mp4Blob;
-              previewFormat = 'mp4';
-            }
-          } catch (conversionError) {
-            if (previewRenderTokenRef.current === token) {
-              console.error('Preview MP4 conversion failed. Falling back to WebM preview.', conversionError);
-              addWarning('Preview video could not be converted to MP4 automatically. Use the download button to convert if playback fails.');
-            }
-          }
-        } else if (previewRenderTokenRef.current === token) {
-          addWarning('This browser cannot play WebM previews. Use Download Video to convert the file to MP4.');
-        }
-      }
-
-      if (previewRenderTokenRef.current !== token) {
-        return null;
-      }
-
-      updatePreviewVideo(previewBlob, previewFormat);
-      invalidateDownloadVideo();
-      setProgressMessage(`${previewFormat.toUpperCase()} preview ready!`);
-      setProgressValue(100);
-
-      window.setTimeout(() => {
-        if (previewRenderTokenRef.current === token && !isRenderingVideo) {
-          setProgressMessage('');
-          setProgressValue(0);
-        }
-      }, 2500);
-
-      return previewBlob;
-    } catch (error) {
-      if (previewRenderTokenRef.current === token) {
-        console.error('Error rendering preview video file:', error);
-        addWarning('Failed to render the preview video file. You can still trigger a download to regenerate it.');
-        setProgressMessage('Preview video unavailable.');
-        setProgressValue(0);
-      }
-      return null;
-    } finally {
-      if (previewRenderTokenRef.current === token) {
-        setIsPreparingPreviewVideo(false);
-      }
-    }
-  }, [addWarning, browserSupportsWebM, includeWatermark, invalidateDownloadVideo, isRenderingVideo, updatePreviewVideo]);
 
   const renderDownloadVideo = useCallback(async (
     scenesToRender: Scene[],
@@ -334,39 +173,6 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
       }
     }
   }, [addWarning, includeWatermark, isRenderingVideo, updateDownloadVideo]);
-
-  useEffect(() => {
-    if (!previewNeedsRefresh) {
-      return;
-    }
-    if (isGeneratingScenes) {
-      return;
-    }
-    if (scenes.length === 0) {
-      resetPreviewVideo();
-      return;
-    }
-
-    const token = ++previewRenderTokenRef.current;
-    const renderPromise = renderPreviewVideo(scenes, aspectRatio, token);
-    previewRenderPromiseRef.current = renderPromise;
-
-    let cancelled = false;
-
-    renderPromise.finally(() => {
-      if (cancelled) {
-        return;
-      }
-      if (previewRenderTokenRef.current === token) {
-        previewRenderPromiseRef.current = null;
-        setPreviewNeedsRefresh(false);
-      }
-    });
-
-    return () => {
-      cancelled = true;
-    };
-  }, [previewNeedsRefresh, scenes, aspectRatio, isGeneratingScenes, renderPreviewVideo, resetPreviewVideo]);
 
   useEffect(() => {
     if (!downloadNeedsRefresh) {
@@ -440,7 +246,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
             break;
         case 'finalizing':
             overallProgress = analysisWeight + imageProcessingWeight + (valueWithinStage * finalizingWeight);
-            if (valueWithinStage === 1) fullMessage = "Scene setup complete. Preview ready!";
+            if (valueWithinStage === 1) fullMessage = "Scene setup complete. Final render queued.";
             break;
     }
     
@@ -492,7 +298,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     setError(null);
     setWarnings([]); // Clear previous warnings
     setScenes([]); // Clear existing scenes for a full regeneration
-    resetPreviewVideo();
+      resetRenderedVideoState();
     analysisCacheRef.current = null; 
     setProgressMessage('Initializing scene generation...');
     setProgressValue(0);
@@ -515,9 +321,9 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
         handleSceneGenerationProgress
       );
       
-      handleSceneGenerationProgress('Video preview ready!', 1, 'finalizing');
+      handleSceneGenerationProgress('Scenes ready for final render!', 1, 'finalizing');
       setScenes(processedScenes);
-      setPreviewNeedsRefresh(true);
+      setAutoDownloadQueued(true);
       invalidateDownloadVideo();
       
       setTimeout(() => {
@@ -542,18 +348,19 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     useAiImages,
     useAiVideo,
     handleSceneGenerationProgress,
-    resetPreviewVideo,
+    resetRenderedVideoState,
     invalidateDownloadVideo,
   ]);
 
-  const handleDownloadVideo = async () => {
+  const handleDownloadVideo = useCallback(async () => {
     if (scenes.length === 0 || isRenderingVideo) {
       return;
     }
+    setAutoDownloadQueued(false);
     setIsRenderingVideo(true);
     setError(null);
     setWarnings([]);
-    setProgressMessage('Preparing video download...');
+    setProgressMessage('Rendering final video...');
     setProgressValue(0);
 
     const canConvertToMp4 = window.crossOriginIsolated;
@@ -643,7 +450,25 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     } finally {
       setIsRenderingVideo(false);
     }
-  };
+  }, [
+    scenes,
+    isRenderingVideo,
+    downloadNeedsRefresh,
+    renderDownloadVideo,
+    aspectRatio,
+    updateDownloadVideo,
+    addWarning,
+  ]);
+
+  useEffect(() => {
+    if (!autoDownloadQueued) {
+      return;
+    }
+    if (isGeneratingScenes || isRenderingVideo) {
+      return;
+    }
+    handleDownloadVideo();
+  }, [autoDownloadQueued, isGeneratingScenes, isRenderingVideo, handleDownloadVideo]);
   
   // TTS Handlers (no change in logic, just ensuring they are present)
   const handleTTSPlay = (text: string) => {
@@ -670,9 +495,9 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     setScenes(prevScenes => prevScenes.map(s =>
       s.id === sceneId ? { ...s, sceneText: updatedText, duration: Math.max(1, updatedDuration) } : s
     ));
-    // Reset preview to reflect changes
+    // Reset rendered video to reflect changes
     if (ttsPlaybackStatus !== 'idle') handleTTSStop();
-    setPreviewNeedsRefresh(true);
+    setAutoDownloadQueued(true);
     invalidateDownloadVideo();
   };
 
@@ -680,9 +505,9 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
     setScenes(prevScenes => {
       const updatedScenes = prevScenes.filter(s => s.id !== sceneId);
       if (updatedScenes.length === 0) {
-        resetPreviewVideo();
+        resetRenderedVideoState();
       } else {
-        setPreviewNeedsRefresh(true);
+        setAutoDownloadQueued(true);
         invalidateDownloadVideo();
       }
       return updatedScenes;
@@ -713,7 +538,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
       kenBurnsConfig: { targetScale: 1.1, targetXPercent: 0, targetYPercent: 0, originXRatio: 0.5, originYRatio: 0.5, animationDurationS: 5 }
     };
     setScenes(prevScenes => [...prevScenes, newScene]);
-    setPreviewNeedsRefresh(true);
+    setAutoDownloadQueued(true);
     invalidateDownloadVideo();
     if (ttsPlaybackStatus !== 'idle') handleTTSStop();
   };
@@ -771,7 +596,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
         setScenes(prevScenes => prevScenes.map(s =>
             s.id === sceneId ? { ...s, footageUrl: newFootageUrl, footageType: sceneToUpdate.footageType } : s
         ));
-        setPreviewNeedsRefresh(true);
+        setAutoDownloadQueued(true);
         invalidateDownloadVideo();
         setProgressMessage(errorOccurred ? 'Image updated with placeholder.' : 'Image updated successfully!');
         setProgressValue(100);
@@ -790,7 +615,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
   const handleIncludeWatermarkChange = (value: boolean) => {
     setIncludeWatermark(value);
     if (scenes.length > 0) {
-      setPreviewNeedsRefresh(true);
+      setAutoDownloadQueued(true);
       invalidateDownloadVideo();
     }
   };
@@ -848,7 +673,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
                 setAspectRatio(ratio);
                 if (scenes.length > 0) {
                     addWarning("Aspect ratio changed. Visuals may need to be updated for existing scenes. Consider regenerating or updating images individually.");
-                    setPreviewNeedsRefresh(true);
+                    setAutoDownloadQueued(true);
                     invalidateDownloadVideo();
                 }
               }}
@@ -871,29 +696,21 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
           </div>
         </div>
 
-        {previewMounted && (
-        <div className={`p-1 sm:p-2 bg-neutral-800/70 backdrop-blur-lg border border-neutral-600 rounded-2xl shadow-lg transition-opacity duration-500 ${showPreview ? 'opacity-100' : 'opacity-0 pointer-events-none'}`}>
-           <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4 text-white px-3 py-2" style={{ fontFamily: 'Fira Code' }}>3. Preview Your Video</h2>
-          <VideoPreview
-            scenes={scenes}
-            aspectRatio={aspectRatio}
-            onDownloadRequest={handleDownloadVideo}
-            isGenerating={isGeneratingScenes}
-            isDownloading={isRenderingVideo}
-            isPreparingVideoFile={isPreparingPreviewVideo}
-            isPreparingDownload={isPreparingDownloadVideo}
-            isDownloadReady={Boolean(downloadVideoBlob)}
-            isTTSEnabled={isTTSEnabled}
-            onTTSPlay={handleTTSPlay}
-            onTTSPause={handleTTSPause}
-            onTTSResume={handleTTSResume}
-            onTTSStop={handleTTSStop}
-            ttsPlaybackStatus={ttsPlaybackStatus}
-            videoUrl={previewVideoUrl}
-            videoFormat={previewVideoFormat}
-            downloadFormat={downloadVideoFormat}
-          />
-        </div>
+        {showOutputPanel && (
+          <div className={`p-1 sm:p-2 bg-neutral-800/70 backdrop-blur-lg border border-neutral-600 rounded-2xl shadow-lg`}>
+            <h2 className="text-xl sm:text-2xl font-semibold mb-2 sm:mb-4 text-white px-3 py-2" style={{ fontFamily: 'Fira Code' }}>
+              3. Download Your Video
+            </h2>
+            <VideoOutputPanel
+              isGeneratingScenes={isGeneratingScenes}
+              isRenderingVideo={isRenderingVideo}
+              isPreparingDownload={isPreparingDownloadVideo}
+              hasDownload={Boolean(downloadVideoBlob)}
+              downloadFormat={downloadVideoFormat}
+              onDownloadRequest={handleDownloadVideo}
+              autoDownloadQueued={autoDownloadQueued}
+            />
+          </div>
         )}
       </div>
       
@@ -941,7 +758,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
 
       <footer className="mt-8 sm:mt-12 text-center text-gray-500 text-sm">
         <p>&copy; {new Date().getFullYear()} {APP_TITLE}. AI-powered video creation.</p>
-        <p>Visuals can be AI-generated or placeholders. Narration preview with TTS. WebM video download.</p>
+        <p>Visuals can be AI-generated or placeholders. Narration preview with TTS. Direct WebM/MP4 video downloads.</p>
       </footer>
     </div>
   );
