@@ -20,6 +20,8 @@ const hashString = (str: string): number => {
   return Math.abs(hash);
 };
 
+const MAX_SCENE_PROCESSING_CONCURRENCY = 4;
+
 // Helper to generate Ken Burns configuration for a scene
 const generateSceneKenBurnsConfig = (duration: number): KenBurnsConfig => {
     const endScale = 1.05 + Math.random() * 0.1; // Target scale: 1.05 to 1.15
@@ -350,68 +352,86 @@ const buildSearchQueries = (context: PlaceholderContext): string[] => {
   ).slice(0, 18);
 };
 
+const wikimediaCandidateCache = new Map<string, Promise<WikimediaCandidate[]>>();
+
 const fetchWikimediaMediaCandidates = async (
   query: string,
   orientation: 'landscape' | 'portrait',
   type: 'video' | 'image',
   offset: number = 0
 ): Promise<WikimediaCandidate[]> => {
-  const baseUrl =
-    `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*` +
-    `&generator=search&gsrsearch=${encodeURIComponent(query)}` +
-    `&gsrnamespace=6&gsrprop=snippet|titlesnippet&gsrsort=relevance&gsrlimit=30&gsroffset=${offset}` +
-    `&prop=imageinfo|info&inprop=url|displaytitle` +
-    `&iiprop=url|size|mime|extmetadata${type === 'video' ? '|duration' : ''}`;
-
-  try {
-    const resp = await fetch(baseUrl);
-    if (!resp.ok) return [];
-    const data = await resp.json();
-    const pages = data?.query?.pages;
-    if (!pages) return [];
-    const results: WikimediaCandidate[] = [];
-    const pageEntries = Object.values(pages) as any[];
-    for (const page of pageEntries) {
-      const info = page?.imageinfo?.[0];
-      if (!info || typeof info.url !== 'string' || typeof info.mime !== 'string') continue;
-      const isVideo = info.mime.startsWith('video');
-      if (type === 'video' && !isVideo) continue;
-      if (type === 'image' && isVideo) continue;
-      if (orientation === 'landscape' && info.width < info.height) continue;
-      if (orientation === 'portrait' && info.height < info.width) continue;
-
-      const durationValue = info.duration;
-      let numericDuration: number | undefined = undefined;
-      if (typeof durationValue === 'number') {
-        numericDuration = durationValue;
-      } else if (typeof durationValue === 'string') {
-        const parsed = parseFloat(durationValue);
-        if (!Number.isNaN(parsed)) numericDuration = parsed;
-      }
-
-      const description =
-        cleanWikiHtml(
-          info.extmetadata?.ImageDescription?.value ||
-          info.extmetadata?.ObjectName?.value ||
-          info.extmetadata?.Description?.value
-        );
-
-      results.push({
-        url: info.url,
-        type: isVideo ? 'video' : 'image',
-        width: info.width,
-        height: info.height,
-        duration: numericDuration,
-        title: cleanWikiHtml(page?.title || ''),
-        snippet: cleanWikiHtml(page?.snippet || ''),
-        description
-      });
-    }
-    return results;
-  } catch (err) {
-    console.warn('Error fetching from Wikimedia API:', err);
-    return [];
+  const cacheKey = `${type}|${orientation}|${query}|${offset}`;
+  const cached = wikimediaCandidateCache.get(cacheKey);
+  if (cached) {
+    return cached;
   }
+
+  const fetchPromise = (async () => {
+    const baseUrl =
+      `https://commons.wikimedia.org/w/api.php?action=query&format=json&origin=*` +
+      `&generator=search&gsrsearch=${encodeURIComponent(query)}` +
+      `&gsrnamespace=6&gsrprop=snippet|titlesnippet&gsrsort=relevance&gsrlimit=30&gsroffset=${offset}` +
+      `&prop=imageinfo|info&inprop=url|displaytitle` +
+      `&iiprop=url|size|mime|extmetadata${type === 'video' ? '|duration' : ''}`;
+
+    try {
+      const resp = await fetch(baseUrl);
+      if (!resp.ok) return [];
+      const data = await resp.json();
+      const pages = data?.query?.pages;
+      if (!pages) return [];
+      const results: WikimediaCandidate[] = [];
+      const pageEntries = Object.values(pages) as any[];
+      for (const page of pageEntries) {
+        const info = page?.imageinfo?.[0];
+        if (!info || typeof info.url !== 'string' || typeof info.mime !== 'string') continue;
+        const isVideo = info.mime.startsWith('video');
+        if (type === 'video' && !isVideo) continue;
+        if (type === 'image' && isVideo) continue;
+        if (orientation === 'landscape' && info.width < info.height) continue;
+        if (orientation === 'portrait' && info.height < info.width) continue;
+
+        const durationValue = info.duration;
+        let numericDuration: number | undefined = undefined;
+        if (typeof durationValue === 'number') {
+          numericDuration = durationValue;
+        } else if (typeof durationValue === 'string') {
+          const parsed = parseFloat(durationValue);
+          if (!Number.isNaN(parsed)) numericDuration = parsed;
+        }
+
+        const description =
+          cleanWikiHtml(
+            info.extmetadata?.ImageDescription?.value ||
+            info.extmetadata?.ObjectName?.value ||
+            info.extmetadata?.Description?.value
+          );
+
+        results.push({
+          url: info.url,
+          type: isVideo ? 'video' : 'image',
+          width: info.width,
+          height: info.height,
+          duration: numericDuration,
+          title: cleanWikiHtml(page?.title || ''),
+          snippet: cleanWikiHtml(page?.snippet || ''),
+          description
+        });
+      }
+      return results;
+    } catch (err) {
+      console.warn('Error fetching from Wikimedia API:', err);
+      return [];
+    }
+  })();
+
+  const guarded = fetchPromise.catch(error => {
+    wikimediaCandidateCache.delete(cacheKey);
+    throw error;
+  });
+
+  wikimediaCandidateCache.set(cacheKey, guarded);
+  return guarded;
 };
 
 const scoreCandidate = (
@@ -511,13 +531,16 @@ export const fetchPlaceholderFootageUrl = async (
     const query = queries[i];
     const offset = (baseOffset + i * 7) % 60;
 
-    const videoCandidates = await fetchWikimediaMediaCandidates(query, orientation, 'video', offset);
+    const [videoCandidates, imageCandidates] = await Promise.all([
+      fetchWikimediaMediaCandidates(query, orientation, 'video', offset),
+      fetchWikimediaMediaCandidates(query, orientation, 'image', offset),
+    ]);
+
     considerCandidates(videoCandidates, query);
     if (bestCandidate && bestCandidate.type === 'video' && bestCandidate.score >= 8) {
       break;
     }
 
-    const imageCandidates = await fetchWikimediaMediaCandidates(query, orientation, 'image', offset);
     considerCandidates(imageCandidates, query);
     if (bestCandidate && bestCandidate.score >= 9) {
       break;
@@ -553,9 +576,11 @@ export const processNarrationToScenes = async (
   onProgress: (message: string, valueWithinStage: number, stage: 'ai_image' | 'placeholder_image' | 'finalizing', current?: number, total?: number, errorMsg?: string) => void,
   existingScenes?: Scene[] // For updating a single image in existing scenes
 ): Promise<Scene[]> => {
-  const scenes: Scene[] = existingScenes && !options.generateSpecificImageForSceneId ? [...existingScenes] : [];
+  const baseScenes: Scene[] = existingScenes && !options.generateSpecificImageForSceneId ? [...existingScenes] : [];
   const totalScenes = narrationAnalysis.length;
   let scenesToProcess = narrationAnalysis;
+  let targetSceneId: string | null = null;
+  let targetSceneIndex: number | null = null;
 
   // If we are only updating a single image
   if (options.generateSpecificImageForSceneId && existingScenes) {
@@ -565,61 +590,87 @@ export const processNarrationToScenes = async (
       // This part assumes narrationAnalysis contains the *original* analysis items,
       // and we match by index if IDs are not perfectly aligned or available in narrationAnalysis items.
       // For simplicity, we'll assume the scene ID corresponds or we re-use its existing imagePrompt.
-      const analysisItemForScene = narrationAnalysis.find(item => item.sceneText === existingScenes[sceneToUpdateIndex].sceneText) || 
+      const analysisItemForScene = narrationAnalysis.find(item => item.sceneText === existingScenes[sceneToUpdateIndex].sceneText) ||
                                    { ...existingScenes[sceneToUpdateIndex], duration: existingScenes[sceneToUpdateIndex].duration }; // Fallback to existing data if not found
-      
+
       scenesToProcess = [analysisItemForScene as GeminiSceneResponseItem]; // Process only this one item
+      targetSceneId = existingScenes[sceneToUpdateIndex].id;
+      targetSceneIndex = sceneToUpdateIndex;
     } else {
       console.warn("Scene to update image for not found:", options.generateSpecificImageForSceneId);
       return existingScenes; // No change
     }
   }
-
-
   const timestamp = Date.now();
-  for (let index = 0; index < scenesToProcess.length; index++) {
-    const item = scenesToProcess[index];
-    const sceneId = options.generateSpecificImageForSceneId || `scene-${index}-${timestamp}`;
+
+  const totalToProcess = scenesToProcess.length;
+  if (totalToProcess === 0) {
+    onProgress('All scene visuals processed.', 1, 'finalizing', totalScenes, totalScenes);
+    return baseScenes;
+  }
+
+  const sceneProgress = new Array<number>(totalToProcess).fill(0);
+  const aggregateProgressUpdate = (
+    index: number,
+    progressValue: number,
+    stage: 'ai_image' | 'placeholder_image',
+    message: string,
+    errorMsg?: string
+  ) => {
+    const clamped = Math.max(0, Math.min(1, progressValue));
+    sceneProgress[index] = Math.max(sceneProgress[index], clamped);
+    const aggregated = sceneProgress.reduce((sum, value) => sum + value, 0) / totalToProcess;
+    onProgress(message, aggregated, stage, Math.min(index + 1, totalToProcess), totalToProcess, errorMsg);
+  };
+
+  const processSingleScene = async (
+    item: GeminiSceneResponseItem,
+    index: number,
+    reportProgress: (
+      progress: number,
+      stage: 'ai_image' | 'placeholder_image',
+      message: string,
+      errorMsg?: string
+    ) => void
+  ): Promise<Scene> => {
+    const sceneId = targetSceneId && totalToProcess === 1 ? targetSceneId : `scene-${index}-${timestamp}`;
     let footageUrl = '';
     let footageType: 'image' | 'video' = 'image';
-    let imageGenError: string | undefined = undefined;
+    let imageGenError: string | undefined;
 
     const duration = item.duration > 0 ? item.duration : calculateDurationFromText(item.sceneText);
-    const validatedDuration = Math.max(3, Math.min(20, duration)); // Ensure duration is within reasonable bounds
+    const validatedDuration = Math.max(3, Math.min(20, duration));
+    const sceneNumber = index + 1;
+
+    let currentStage: 'ai_image' | 'placeholder_image' = options.useAiGeneratedImages ? 'ai_image' : 'placeholder_image';
+    reportProgress(0.05, currentStage, `Preparing scene ${sceneNumber}/${totalToProcess} visuals...`);
 
     if (options.useAiGeneratedImages && item.imagePrompt) {
-      onProgress(
-        `Generating AI image for scene ${index + 1}/${scenesToProcess.length}...`,
-        (index + 1) / scenesToProcess.length,
-        'ai_image',
-        index + 1,
-        scenesToProcess.length
-      );
-      const imagenResult = await generateImageWithImagen(item.imagePrompt, sceneId);
-      if (imagenResult.base64Image) {
-        footageUrl = imagenResult.base64Image;
-        footageType = 'image';
-      } else {
-        imageGenError = imagenResult.userFriendlyError || 'AI image generation failed. Using placeholder.';
-        console.warn(imageGenError, "Prompt:", item.imagePrompt);
-        onProgress(imageGenError, (index + 1) / scenesToProcess.length, 'ai_image', index + 1, scenesToProcess.length, imageGenError);
-        const placeholder = await fetchPlaceholderFootageUrl(
-          { keywords: item.keywords, sceneText: item.sceneText, imagePrompt: item.imagePrompt },
-          aspectRatio,
-          validatedDuration,
-          sceneId
-        );
-        footageUrl = placeholder.url;
-        footageType = placeholder.type;
+      currentStage = 'ai_image';
+      reportProgress(0.2, 'ai_image', `Generating AI image for scene ${sceneNumber}/${totalToProcess}...`);
+      try {
+        const imagenResult = await generateImageWithImagen(item.imagePrompt, sceneId);
+        if (imagenResult.base64Image) {
+          footageUrl = imagenResult.base64Image;
+          footageType = 'image';
+          reportProgress(0.85, 'ai_image', `AI image ready for scene ${sceneNumber}/${totalToProcess}.`);
+        } else {
+          imageGenError = imagenResult.userFriendlyError || 'AI image generation failed. Using placeholder.';
+          console.warn(imageGenError, 'Prompt:', item.imagePrompt);
+          reportProgress(0.4, 'ai_image', imageGenError, imageGenError);
+        }
+      } catch (error) {
+        const errMsg = error instanceof Error ? error.message : 'AI image generation failed. Using placeholder.';
+        imageGenError = errMsg;
+        console.warn('AI image generation threw an error. Falling back to placeholder.', error);
+        reportProgress(0.4, 'ai_image', errMsg, errMsg);
       }
-    } else {
-      onProgress(
-        `Fetching placeholder image for scene ${index + 1}/${scenesToProcess.length}...`,
-        (index + 1) / scenesToProcess.length,
-        'placeholder_image',
-        index + 1,
-        scenesToProcess.length
-      );
+    }
+
+    if (!footageUrl) {
+      currentStage = 'placeholder_image';
+      const placeholderStart = options.useAiGeneratedImages ? 0.45 : 0.2;
+      reportProgress(placeholderStart, 'placeholder_image', `Fetching placeholder for scene ${sceneNumber}/${totalToProcess}...`, imageGenError);
       const placeholder = await fetchPlaceholderFootageUrl(
         { keywords: item.keywords, sceneText: item.sceneText, imagePrompt: item.imagePrompt },
         aspectRatio,
@@ -628,43 +679,71 @@ export const processNarrationToScenes = async (
       );
       footageUrl = placeholder.url;
       footageType = placeholder.type;
+      reportProgress(0.85, 'placeholder_image', `Placeholder ready for scene ${sceneNumber}/${totalToProcess}.`, imageGenError);
     }
-    
+
     const kenBurnsConfig = generateSceneKenBurnsConfig(validatedDuration);
+    reportProgress(1, currentStage, `Scene ${sceneNumber}/${totalToProcess} visuals ready.`, imageGenError);
 
-    if (options.generateSpecificImageForSceneId && existingScenes) {
-        const sceneToUpdateIndex = existingScenes.findIndex(s => s.id === options.generateSpecificImageForSceneId);
-        if (sceneToUpdateIndex !== -1) {
-            existingScenes[sceneToUpdateIndex].footageUrl = footageUrl;
-            existingScenes[sceneToUpdateIndex].footageType = footageType;
-            existingScenes[sceneToUpdateIndex].kenBurnsConfig = kenBurnsConfig; // Re-gen KB if image changes
-            // Optionally update keywords/imagePrompt if they were also re-analyzed
-            existingScenes[sceneToUpdateIndex].imagePrompt = item.imagePrompt; 
-            existingScenes[sceneToUpdateIndex].keywords = item.keywords;
-             // If duration was part of the single scene update, update it too
-            if(item.duration) existingScenes[sceneToUpdateIndex].duration = validatedDuration;
+    return {
+      id: sceneId,
+      sceneText: item.sceneText,
+      keywords: item.keywords,
+      imagePrompt: item.imagePrompt,
+      duration: validatedDuration,
+      footageUrl,
+      footageType,
+      kenBurnsConfig,
+    };
+  };
 
-            if (imageGenError) { // Store error if any for this specific update
-                // How to communicate this specific error back? Maybe App.tsx adds to a list of warnings.
-                // For now, it's logged and onProgress gets it.
-            }
-            return existingScenes; // Return modified existing scenes
+  const results = new Array<Scene>(totalToProcess);
+  let nextIndex = 0;
+  const concurrency = Math.min(MAX_SCENE_PROCESSING_CONCURRENCY, Math.max(1, totalToProcess));
+
+  const workers = Array.from({ length: concurrency }, () =>
+    (async () => {
+      while (true) {
+        const currentIndex = nextIndex++;
+        if (currentIndex >= totalToProcess) {
+          break;
         }
-    } else {
-         scenes.push({
-          id: sceneId,
-          sceneText: item.sceneText,
-          keywords: item.keywords,
-          imagePrompt: item.imagePrompt,
-          duration: validatedDuration,
-          footageUrl: footageUrl,
-          footageType: footageType,
-          kenBurnsConfig: kenBurnsConfig,
-        });
-    }
+        const item = scenesToProcess[currentIndex];
+        const scene = await processSingleScene(item, currentIndex, (progress, stage, message, errorMsg) =>
+          aggregateProgressUpdate(currentIndex, progress, stage, message, errorMsg)
+        );
+        results[currentIndex] = scene;
+      }
+    })()
+  );
+
+  await Promise.all(workers);
+
+  onProgress('All scene visuals processed.', 1, 'finalizing', totalScenes, totalScenes);
+
+  const generatedScenes = results.filter((scene): scene is Scene => Boolean(scene));
+
+  if (targetSceneId && existingScenes && targetSceneIndex !== null && generatedScenes[0]) {
+    const replacement = { ...generatedScenes[0], id: targetSceneId };
+    const updatedScenes = existingScenes.map((scene, idx) => {
+      if (idx !== targetSceneIndex) {
+        return scene;
+      }
+      return {
+        ...scene,
+        sceneText: replacement.sceneText,
+        keywords: replacement.keywords,
+        imagePrompt: replacement.imagePrompt,
+        duration: replacement.duration,
+        footageUrl: replacement.footageUrl,
+        footageType: replacement.footageType,
+        kenBurnsConfig: replacement.kenBurnsConfig,
+      };
+    });
+    return updatedScenes;
   }
-  onProgress("All scene visuals processed.", 1, 'finalizing', totalScenes, totalScenes);
-  return scenes;
+
+  return baseScenes.length > 0 ? [...baseScenes, ...generatedScenes] : generatedScenes;
 };
 
 export const calculateDurationFromText = (text: string): number => {
