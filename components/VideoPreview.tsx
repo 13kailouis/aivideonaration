@@ -32,6 +32,7 @@ interface VideoPreviewProps {
   videoUrl?: string | null;
   videoFormat?: 'webm' | 'mp4';
   downloadFormat?: 'webm' | 'mp4';
+
   downloadStatus?: 'idle' | 'preparing' | 'ready' | 'error';
 }
 
@@ -62,7 +63,9 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
   videoUrl,
   videoFormat = 'webm',
   downloadFormat = videoFormat,
+
   downloadStatus = 'idle',
+
 }) => {
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -284,11 +287,17 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
   const downloadButtonText = (() => {
     if (isDownloading) return 'Rendering video...';
     if (isPreparingVideoFile) return `Updating ${previewFormatLabel} preview...`;
+
     if (downloadStatus === 'error') return 'Retry high-quality download';
     if ((isPreparingDownload || downloadStatus === 'preparing') && !isDownloadReady) return 'Preparing HD download...';
     if (isPreparingDownload && isDownloadReady) return `Refreshing ${resolvedDownloadFormatLabel} download...`;
     if (isDownloadReady) return `Download ${resolvedDownloadFormatLabel}`;
     if (downloadStatus === 'preparing') return 'Preparing HD download...';
+
+    if (isPreparingDownload && !isDownloadReady) return 'Preparing HD download...';
+    if (isPreparingDownload && isDownloadReady) return `Refreshing ${resolvedDownloadFormatLabel} download...`;
+    if (isDownloadReady) return `Download ${resolvedDownloadFormatLabel}`;
+
     return `Download ${previewFormatLabel}`;
   })();
   const isDownloadButtonBusy = isPreparingVideoFile || isPreparingDownload;
@@ -330,7 +339,11 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
             {downloadButtonText}
           </button>
         </div>
+
         {(isPreparingDownload || downloadStatus === 'preparing') && !isDownloadReady && (
+
+        {isPreparingDownload && !isDownloadReady && (
+
           <p className="mt-2 text-[10px] sm:text-xs text-gray-400">
             Preparing a high-quality download in the background...
           </p>
@@ -340,11 +353,13 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
             Download ready as {resolvedDownloadFormatLabel}.
           </p>
         )}
+
         {downloadStatus === 'error' && (
           <p className="mt-2 text-[10px] sm:text-xs text-amber-400">
             We hit a snag preparing the HD download. Tap the button to retry.
           </p>
         )}
+
       </div>
     );
   }
@@ -456,7 +471,11 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
           {downloadButtonText}
         </button>
       </div>
+
       {(isPreparingDownload || downloadStatus === 'preparing') && !isDownloadReady && (
+
+      {isPreparingDownload && !isDownloadReady && (
+
         <div className="mt-2 text-xs sm:text-sm text-gray-400 text-right">
           Preparing a high-quality download in the background...
         </div>
@@ -469,11 +488,13 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
           Download ready as {resolvedDownloadFormatLabel}.
         </div>
       )}
+
       {downloadStatus === 'error' && (
         <div className="mt-1 text-xs sm:text-sm text-amber-400 text-right">
           We hit a snag preparing the HD download. Tap download to retry.
         </div>
       )}
+
     </div>
   );
 };
