@@ -20,12 +20,15 @@ interface VideoPreviewProps {
   onDownloadRequest: () => void;
   isGenerating: boolean;
   isDownloading?: boolean;
+  isPreparingVideoFile?: boolean;
   isTTSEnabled: boolean;
   onTTSPlay: (text: string) => void;
   onTTSPause: () => void;
   onTTSResume: () => void;
   onTTSStop: () => void;
   ttsPlaybackStatus: 'idle' | 'playing' | 'paused' | 'ended';
+  videoUrl?: string | null;
+  videoFormat?: 'webm' | 'mp4';
 }
 
 const getDefaultSlotState = (): ImageSlotState => ({
@@ -43,12 +46,15 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
   onDownloadRequest,
   isGenerating,
   isDownloading,
+  isPreparingVideoFile = false,
   isTTSEnabled,
   onTTSPlay,
   onTTSPause,
   onTTSResume,
   onTTSStop,
-  ttsPlaybackStatus
+  ttsPlaybackStatus,
+  videoUrl,
+  videoFormat = 'webm'
 }) => {
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -64,6 +70,18 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
   const animationTriggerFrameRef = useRef<number | null>(null);
 
   const currentScene = scenes[currentSceneIndex];
+
+  useEffect(() => {
+    if (!videoUrl) {
+      return;
+    }
+    if (animationTriggerFrameRef.current !== null) cancelAnimationFrame(animationTriggerFrameRef.current);
+    if (sceneTimeoutRef.current) clearTimeout(sceneTimeoutRef.current);
+    if (progressIntervalRef.current) clearInterval(progressIntervalRef.current);
+    setIsPlaying(false);
+    setElapsedTime(0);
+    onTTSStop();
+  }, [videoUrl, onTTSStop]);
 
   // Effect for initial scene load and regeneration
   useEffect(() => {
@@ -244,15 +262,51 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
 
   const handleRestart = () => {
     if (scenes.length === 0 || isGenerating) return;
-    onTTSStop(); 
+    onTTSStop();
     setCurrentSceneIndex(0);
     setActiveSlotIndex(0);
     setImageSlots([getDefaultSlotState(), getDefaultSlotState()]);
     setElapsedTime(0);
-    setIsPlaying(true); 
+    setIsPlaying(true);
   };
 
   const footageAspectRatioClass = aspectRatio === '16:9' ? 'aspect-video' : 'aspect-[9/16]';
+
+  if (videoUrl) {
+    return (
+      <div className="bg-neutral-900 border border-neutral-700 p-1 sm:p-2 rounded-lg shadow-xl">
+        <div className={`relative w-full ${footageAspectRatioClass} bg-black overflow-hidden rounded-md`}>
+          <video
+            key={videoUrl}
+            src={videoUrl}
+            controls
+            playsInline
+            loop
+            className="w-full h-full rounded-md"
+          />
+          {isPreparingVideoFile && (
+            <div className="absolute inset-0 bg-black/60 flex items-center justify-center text-white text-sm sm:text-base">
+              Updating preview video...
+            </div>
+          )}
+        </div>
+        <div className="mt-3 flex items-center justify-between space-x-2">
+          <div className="text-xs sm:text-sm text-gray-400 uppercase tracking-wide">
+            {videoFormat?.toUpperCase()} preview ready
+          </div>
+          <button
+            onClick={onDownloadRequest}
+            disabled={isDownloading || isPreparingVideoFile || isGenerating}
+            className="flex items-center px-3 py-2 sm:px-4 sm:py-2.5 bg-white hover:bg-gray-200 disabled:opacity-50 text-black text-xs sm:text-sm font-medium rounded-md shadow-sm transition-colors"
+            aria-live="polite"
+          >
+            <DownloadIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
+            {isDownloading ? 'Rendering Video...' : `Download ${videoFormat?.toUpperCase() ?? 'VIDEO'}`}
+          </button>
+        </div>
+      </div>
+    );
+  }
 
   const getImageStyle = (slotState: ImageSlotState): React.CSSProperties => ({
     position: 'absolute',
@@ -352,7 +406,7 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
         </div>
         <button
           onClick={onDownloadRequest}
-          disabled={scenes.length === 0 || isGenerating || isDownloading}
+          disabled={scenes.length === 0 || isGenerating || isDownloading || isPreparingVideoFile}
           className="flex items-center px-3 py-2 sm:px-4 sm:py-2.5 bg-white hover:bg-gray-200 disabled:opacity-50 text-black text-xs sm:text-sm font-medium rounded-md shadow-sm transition-colors"
           aria-live="polite"
         >
@@ -360,6 +414,9 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
           {isDownloading ? 'Rendering Video...' : 'Download Video'}
         </button>
       </div>
+      {isPreparingVideoFile && (
+        <div className="mt-2 text-xs sm:text-sm text-gray-400 text-right">Rendering preview video file...</div>
+      )}
     </div>
   );
 };
