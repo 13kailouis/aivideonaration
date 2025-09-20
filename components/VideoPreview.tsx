@@ -296,12 +296,17 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
           </div>
           <button
             onClick={onDownloadRequest}
-            disabled={isDownloading || isPreparingVideoFile || isGenerating}
+            disabled={isDownloading || isGenerating}
             className="flex items-center px-3 py-2 sm:px-4 sm:py-2.5 bg-white hover:bg-gray-200 disabled:opacity-50 text-black text-xs sm:text-sm font-medium rounded-md shadow-sm transition-colors"
             aria-live="polite"
+            aria-busy={isPreparingVideoFile || undefined}
           >
             <DownloadIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-            {isDownloading ? 'Rendering Video...' : `Download ${videoFormat?.toUpperCase() ?? 'VIDEO'}`}
+            {isDownloading
+              ? 'Rendering Video...'
+              : isPreparingVideoFile
+                ? `Queueing ${videoFormat?.toUpperCase() ?? 'VIDEO'} Download...`
+                : `Download ${videoFormat?.toUpperCase() ?? 'VIDEO'}`}
           </button>
         </div>
       </div>
@@ -406,12 +411,17 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
         </div>
         <button
           onClick={onDownloadRequest}
-          disabled={scenes.length === 0 || isGenerating || isDownloading || isPreparingVideoFile}
+          disabled={scenes.length === 0 || isGenerating || isDownloading}
           className="flex items-center px-3 py-2 sm:px-4 sm:py-2.5 bg-white hover:bg-gray-200 disabled:opacity-50 text-black text-xs sm:text-sm font-medium rounded-md shadow-sm transition-colors"
           aria-live="polite"
+          aria-busy={isPreparingVideoFile || undefined}
         >
           <DownloadIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-          {isDownloading ? 'Rendering Video...' : 'Download Video'}
+          {isDownloading
+            ? 'Rendering Video...'
+            : isPreparingVideoFile
+              ? 'Queueing Download...'
+              : 'Download Video'}
         </button>
       </div>
       {isPreparingVideoFile && (
