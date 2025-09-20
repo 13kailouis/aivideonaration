@@ -29,6 +29,83 @@ const RENDER_CONFIG: Record<RenderMode, RenderConfig> = {
 
 const getRenderConfig = (mode: RenderMode): RenderConfig => RENDER_CONFIG[mode] ?? RENDER_CONFIG.preview;
 
+const MIN_EFFECTIVE_FPS = 4;
+const MIN_DOWNLOAD_FPS = 8;
+const MIN_PREVIEW_FPS = 10;
+const PREVIEW_FRAME_BUDGET = 3_000;
+const DOWNLOAD_FRAME_BUDGET = 4_500;
+const LONG_FORM_DURATION_THRESHOLD_SECONDS = 120;
+const ULTRA_LONG_DURATION_THRESHOLD_SECONDS = 300;
+const LONG_FORM_LANDSCAPE_LIMIT = 1_120;
+const ULTRA_LONG_LANDSCAPE_LIMIT = 960;
+const LONG_FORM_PORTRAIT_LIMIT = 1_120;
+const ULTRA_LONG_PORTRAIT_LIMIT = 960;
+const LONG_FORM_BITRATE_LIMIT = 3_000_000;
+const ULTRA_LONG_BITRATE_LIMIT = 2_200_000;
+const MIN_DOWNLOAD_BITRATE = 900_000;
+const MIN_PREVIEW_BITRATE = 700_000;
+
+const computeTotalSceneDurationSeconds = (scenes: Scene[]): number =>
+  scenes.reduce((total, scene) => {
+    const rawDuration = typeof scene.duration === 'number' && Number.isFinite(scene.duration)
+      ? scene.duration
+      : 0;
+    return total + Math.max(0, rawDuration);
+  }, 0);
+
+const resolveOptimizedRenderConfig = (mode: RenderMode, scenes: Scene[]): RenderConfig => {
+  const baseConfig = getRenderConfig(mode);
+  const totalDuration = computeTotalSceneDurationSeconds(scenes);
+  if (totalDuration <= 0) {
+    return { ...baseConfig };
+  }
+
+  const adjustedConfig: RenderConfig = { ...baseConfig };
+  const frameBudget = mode === 'download' ? DOWNLOAD_FRAME_BUDGET : PREVIEW_FRAME_BUDGET;
+  const minFps = mode === 'download' ? MIN_DOWNLOAD_FPS : MIN_PREVIEW_FPS;
+  const baseTotalFrames = totalDuration * baseConfig.fps;
+
+  if (baseTotalFrames > frameBudget) {
+    const allowedFpsRaw = Math.floor(frameBudget / totalDuration);
+    const allowedFps = Math.max(minFps, Math.min(baseConfig.fps, allowedFpsRaw));
+    if (allowedFps < adjustedConfig.fps) {
+      adjustedConfig.fps = Math.max(MIN_EFFECTIVE_FPS, allowedFps);
+      const bitrateScale = adjustedConfig.fps / baseConfig.fps;
+      const minBitrate = mode === 'download' ? MIN_DOWNLOAD_BITRATE : MIN_PREVIEW_BITRATE;
+      adjustedConfig.bitrate = Math.max(
+        minBitrate,
+        Math.round(baseConfig.bitrate * bitrateScale),
+      );
+    }
+  }
+
+  if (totalDuration > LONG_FORM_DURATION_THRESHOLD_SECONDS) {
+    adjustedConfig.maxLandscapeWidth = Math.min(baseConfig.maxLandscapeWidth, LONG_FORM_LANDSCAPE_LIMIT);
+    adjustedConfig.maxPortraitHeight = Math.min(baseConfig.maxPortraitHeight, LONG_FORM_PORTRAIT_LIMIT);
+    adjustedConfig.bitrate = Math.min(adjustedConfig.bitrate, LONG_FORM_BITRATE_LIMIT);
+  }
+
+  if (totalDuration > ULTRA_LONG_DURATION_THRESHOLD_SECONDS) {
+    adjustedConfig.maxLandscapeWidth = Math.min(adjustedConfig.maxLandscapeWidth, ULTRA_LONG_LANDSCAPE_LIMIT);
+    adjustedConfig.maxPortraitHeight = Math.min(adjustedConfig.maxPortraitHeight, ULTRA_LONG_PORTRAIT_LIMIT);
+    adjustedConfig.bitrate = Math.min(adjustedConfig.bitrate, ULTRA_LONG_BITRATE_LIMIT);
+  }
+
+  const minBitrate = mode === 'download' ? MIN_DOWNLOAD_BITRATE : MIN_PREVIEW_BITRATE;
+  adjustedConfig.bitrate = Math.max(minBitrate, adjustedConfig.bitrate);
+  adjustedConfig.fps = Math.max(MIN_EFFECTIVE_FPS, Math.min(baseConfig.fps, adjustedConfig.fps));
+
+  return adjustedConfig;
+};
+
+const yieldToEventLoop = (): Promise<void> => new Promise(resolve => {
+  if (typeof requestAnimationFrame === 'function') {
+    requestAnimationFrame(() => resolve());
+    return;
+  }
+  setTimeout(resolve, 0);
+});
+
 const WEB_CODECS_WEBM_CODEC_CANDIDATES = ['vp09.00.10.08', 'vp8'] as const;
 const MP4_CODEC_CANDIDATES = ['avc1.640028', 'avc1.4D4028', 'avc1.42E01E'] as const;
 const MP4_MIMETYPE = 'video/mp4';
@@ -1050,6 +1127,8 @@ const generateVideoWithWebCodecs = (
       );
 
       let totalFramesRenderedOverall = 0;
+      let framesSinceLastYield = 0;
+      const framesBetweenYields = Math.max(60, Math.round(config.fps * 3));
 
       for (const planItem of renderPlan) {
         const { scene, frameCount } = planItem;
@@ -1076,9 +1155,22 @@ const generateVideoWithWebCodecs = (
           frame.close();
 
           totalFramesRenderedOverall++;
+          framesSinceLastYield++;
           if (totalFramesToRenderOverall > 0) {
             updateOverallProgress(totalFramesRenderedOverall / totalFramesToRenderOverall, 0.79, 0.20);
           }
+
+          if (framesSinceLastYield >= framesBetweenYields) {
+            await yieldToEventLoop();
+            throwIfAborted(signal);
+            framesSinceLastYield = 0;
+          }
+        }
+
+        if (framesSinceLastYield > 0) {
+          await yieldToEventLoop();
+          throwIfAborted(signal);
+          framesSinceLastYield = 0;
         }
       }
 
@@ -1490,7 +1582,7 @@ export const generateWebMFromScenes = (
   signal?: AbortSignal,
 ): Promise<GeneratedVideoResult> => {
   const mode = options.mode ?? 'preview';
-  const config = getRenderConfig(mode);
+  const config = resolveOptimizedRenderConfig(mode, scenes);
 
   if (hasWebCodecsSupport()) {
     return generateVideoWithWebCodecs(scenes, aspectRatio, options, config, onProgressCallback, signal).catch(error => {
