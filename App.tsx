@@ -49,6 +49,7 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
   const downloadRenderPromiseRef = useRef<Promise<Blob | null> | null>(null);
   const downloadVideoBlobRef = useRef<Blob | null>(null);
   const downloadVideoFormatRef = useRef<'webm' | 'mp4'>('webm');
+  const downloadRenderAbortControllerRef = useRef<AbortController | null>(null);
 
   const updateDownloadVideo = useCallback((blob: Blob | null, format: 'webm' | 'mp4') => {
     downloadVideoBlobRef.current = blob;
@@ -58,6 +59,10 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
   }, []);
 
   const resetDownloadVideo = useCallback(() => {
+    if (downloadRenderAbortControllerRef.current) {
+      downloadRenderAbortControllerRef.current.abort();
+      downloadRenderAbortControllerRef.current = null;
+    }
     downloadRenderTokenRef.current += 1;
     downloadRenderPromiseRef.current = null;
     setIsPreparingDownloadVideo(false);
@@ -120,6 +125,12 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
       setProgressValue(0);
     }
 
+    const controller = new AbortController();
+    if (downloadRenderAbortControllerRef.current) {
+      downloadRenderAbortControllerRef.current.abort();
+    }
+    downloadRenderAbortControllerRef.current = controller;
+
     try {
       const generatedVideo = await generateWebMFromScenes(
         scenesToRender,
@@ -135,7 +146,8 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
                 setProgressMessage('Rendering download-ready video...');
               }
             }
-          : undefined
+          : undefined,
+        controller.signal
       );
 
       if (downloadRenderTokenRef.current !== token) {
@@ -158,6 +170,9 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
 
       return generatedVideo.blob;
     } catch (error) {
+      if ((error as DOMException)?.name === 'AbortError') {
+        return null;
+      }
       if (downloadRenderTokenRef.current === token) {
         console.error('Error rendering download-ready video file:', error);
         if (reportProgress) {
@@ -169,6 +184,9 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
       return null;
     } finally {
       if (downloadRenderTokenRef.current === token) {
+        if (downloadRenderAbortControllerRef.current === controller) {
+          downloadRenderAbortControllerRef.current = null;
+        }
         setIsPreparingDownloadVideo(false);
       }
     }
@@ -204,6 +222,10 @@ const App: React.FC<AppProps> = ({ onBackToLanding }) => {
 
     return () => {
       cancelled = true;
+      if (downloadRenderTokenRef.current === token && downloadRenderAbortControllerRef.current) {
+        downloadRenderAbortControllerRef.current.abort();
+        downloadRenderAbortControllerRef.current = null;
+      }
     };
   }, [
     downloadNeedsRefresh,
