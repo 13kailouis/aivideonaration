@@ -1120,6 +1120,7 @@ const generateWebMWithMediaRecorder = (
     let preloadedImages: PreloadedImage[] = [];
     const preloadedImageMap = new Map<string, PreloadedImage>();
     let animationFrameId: number | null = null;
+    let frameTimeoutId: number | null = null;
     let stream: MediaStream | null = null;
     let abortHandler: (() => void) | null = null;
     let aborted = false;
@@ -1144,6 +1145,10 @@ const generateWebMWithMediaRecorder = (
       if (animationFrameId !== null) {
         cancelAnimationFrame(animationFrameId);
         animationFrameId = null;
+      }
+      if (frameTimeoutId !== null) {
+        clearTimeout(frameTimeoutId);
+        frameTimeoutId = null;
       }
       if (signal && abortHandler) {
         signal.removeEventListener('abort', abortHandler);
@@ -1229,6 +1234,12 @@ const generateWebMWithMediaRecorder = (
 
       stream = canvas.captureStream(config.fps);
       console.log(`[Video Rendering Service] Canvas stream captured at ${config.fps} FPS.`);
+      const canvasTrack = stream.getVideoTracks()[0] as CanvasCaptureMediaStreamTrack | undefined;
+      const supportsManualFramePump = typeof canvasTrack?.requestFrame === 'function';
+      let useManualFramePump = supportsManualFramePump;
+      if (useManualFramePump) {
+        console.log('[Video Rendering Service] Using manual canvas frame pumping for accelerated render.');
+      }
 
       const mimeTypeCandidates: Array<{ type: string; format: 'webm' | 'mp4' }> = [
         { type: 'video/webm;codecs=vp9', format: 'webm' },
@@ -1276,6 +1287,10 @@ const generateWebMWithMediaRecorder = (
         if (animationFrameId !== null) {
           cancelAnimationFrame(animationFrameId);
           animationFrameId = null;
+        }
+        if (frameTimeoutId !== null) {
+          clearTimeout(frameTimeoutId);
+          frameTimeoutId = null;
         }
         console.log('[Video Rendering Service] MediaRecorder stopped. Total chunks:', recordedChunks.length);
         if (aborted) {
@@ -1337,7 +1352,22 @@ const generateWebMWithMediaRecorder = (
       let currentFrameInScene = 0;
       let totalFramesRenderedOverall = 0;
 
-      console.log(`[Video Rendering Service] Starting requestAnimationFrame loop. Total scenes: ${renderPlan.length}, Total frames to render: ${totalFramesToRenderOverall}`);
+      console.log(`[Video Rendering Service] Starting ${useManualFramePump ? 'manual' : 'requestAnimationFrame'} render loop. Total scenes: ${renderPlan.length}, Total frames to render: ${totalFramesToRenderOverall}`);
+
+      const scheduleNextFrame = () => {
+        if (settled || aborted || signal?.aborted) {
+          return;
+        }
+
+        if (useManualFramePump) {
+          frameTimeoutId = setTimeout(() => {
+            frameTimeoutId = null;
+            renderFrame();
+          }, 0);
+        } else {
+          animationFrameId = requestAnimationFrame(renderFrame);
+        }
+      };
 
       const renderFrame = () => {
         if (settled || aborted || signal?.aborted) {
@@ -1419,10 +1449,22 @@ const generateWebMWithMediaRecorder = (
           currentFrameInScene = 0;
         }
 
-        animationFrameId = requestAnimationFrame(renderFrame);
+        if (useManualFramePump) {
+          try {
+            canvasTrack?.requestFrame();
+          } catch (err) {
+            console.warn('[Video Rendering Service] Canvas frame request failed; falling back to rAF loop.', err);
+            frameTimeoutId = null;
+            useManualFramePump = false;
+            animationFrameId = requestAnimationFrame(renderFrame);
+            return;
+          }
+        }
+
+        scheduleNextFrame();
       };
 
-      animationFrameId = requestAnimationFrame(renderFrame);
+      scheduleNextFrame();
     } catch (error) {
       const normalizedError = error instanceof Error ? error : new Error(String(error || 'Unknown error during video processing'));
       if (isAbortError(normalizedError)) {
