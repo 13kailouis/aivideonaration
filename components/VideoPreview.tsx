@@ -21,6 +21,8 @@ interface VideoPreviewProps {
   isGenerating: boolean;
   isDownloading?: boolean;
   isPreparingVideoFile?: boolean;
+  isPreparingDownload?: boolean;
+  isDownloadReady?: boolean;
   isTTSEnabled: boolean;
   onTTSPlay: (text: string) => void;
   onTTSPause: () => void;
@@ -29,6 +31,7 @@ interface VideoPreviewProps {
   ttsPlaybackStatus: 'idle' | 'playing' | 'paused' | 'ended';
   videoUrl?: string | null;
   videoFormat?: 'webm' | 'mp4';
+  downloadFormat?: 'webm' | 'mp4';
 }
 
 const getDefaultSlotState = (): ImageSlotState => ({
@@ -47,6 +50,8 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
   isGenerating,
   isDownloading,
   isPreparingVideoFile = false,
+  isPreparingDownload = false,
+  isDownloadReady = false,
   isTTSEnabled,
   onTTSPlay,
   onTTSPause,
@@ -54,7 +59,8 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
   onTTSStop,
   ttsPlaybackStatus,
   videoUrl,
-  videoFormat = 'webm'
+  videoFormat = 'webm',
+  downloadFormat = videoFormat,
 }) => {
   const [currentSceneIndex, setCurrentSceneIndex] = useState(0);
   const [isPlaying, setIsPlaying] = useState(false);
@@ -271,6 +277,17 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
   };
 
   const footageAspectRatioClass = aspectRatio === '16:9' ? 'aspect-video' : 'aspect-[9/16]';
+  const previewFormatLabel = videoFormat?.toUpperCase() ?? 'VIDEO';
+  const resolvedDownloadFormatLabel = (downloadFormat ?? videoFormat ?? 'video').toUpperCase();
+  const downloadButtonText = (() => {
+    if (isDownloading) return 'Rendering video...';
+    if (isPreparingVideoFile) return `Updating ${previewFormatLabel} preview...`;
+    if (isPreparingDownload && !isDownloadReady) return 'Preparing HD download...';
+    if (isPreparingDownload && isDownloadReady) return `Refreshing ${resolvedDownloadFormatLabel} download...`;
+    if (isDownloadReady) return `Download ${resolvedDownloadFormatLabel}`;
+    return `Download ${previewFormatLabel}`;
+  })();
+  const isDownloadButtonBusy = isPreparingVideoFile || isPreparingDownload;
 
   if (videoUrl) {
     return (
@@ -296,23 +313,29 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
         </div>
         <div className="mt-3 flex items-center justify-between space-x-2">
           <div className="text-xs sm:text-sm text-gray-400 uppercase tracking-wide">
-            {videoFormat?.toUpperCase()} preview ready
+            {previewFormatLabel} preview ready
           </div>
           <button
             onClick={onDownloadRequest}
             disabled={isDownloading || isGenerating}
             className="flex items-center px-3 py-2 sm:px-4 sm:py-2.5 bg-white hover:bg-gray-200 disabled:opacity-50 text-black text-xs sm:text-sm font-medium rounded-md shadow-sm transition-colors"
             aria-live="polite"
-            aria-busy={isPreparingVideoFile || undefined}
+            aria-busy={isDownloadButtonBusy || undefined}
           >
             <DownloadIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-            {isDownloading
-              ? 'Rendering Video...'
-              : isPreparingVideoFile
-                ? `Queueing ${videoFormat?.toUpperCase() ?? 'VIDEO'} Download...`
-                : `Download ${videoFormat?.toUpperCase() ?? 'VIDEO'}`}
+            {downloadButtonText}
           </button>
         </div>
+        {isPreparingDownload && !isDownloadReady && (
+          <p className="mt-2 text-[10px] sm:text-xs text-gray-400">
+            Preparing a high-quality download in the background...
+          </p>
+        )}
+        {isDownloadReady && downloadFormat && (
+          <p className="mt-2 text-[10px] sm:text-xs text-gray-400">
+            Download ready as {resolvedDownloadFormatLabel}.
+          </p>
+        )}
       </div>
     );
   }
@@ -418,18 +441,24 @@ const VideoPreview: React.FC<VideoPreviewProps> = ({
           disabled={scenes.length === 0 || isGenerating || isDownloading}
           className="flex items-center px-3 py-2 sm:px-4 sm:py-2.5 bg-white hover:bg-gray-200 disabled:opacity-50 text-black text-xs sm:text-sm font-medium rounded-md shadow-sm transition-colors"
           aria-live="polite"
-          aria-busy={isPreparingVideoFile || undefined}
+          aria-busy={isDownloadButtonBusy || undefined}
         >
           <DownloadIcon className="w-4 h-4 sm:w-5 sm:h-5 mr-1 sm:mr-2" />
-          {isDownloading
-            ? 'Rendering Video...'
-            : isPreparingVideoFile
-              ? 'Queueing Download...'
-              : 'Download Video'}
+          {downloadButtonText}
         </button>
       </div>
+      {isPreparingDownload && !isDownloadReady && (
+        <div className="mt-2 text-xs sm:text-sm text-gray-400 text-right">
+          Preparing a high-quality download in the background...
+        </div>
+      )}
       {isPreparingVideoFile && (
         <div className="mt-2 text-xs sm:text-sm text-gray-400 text-right">Rendering preview video file...</div>
+      )}
+      {isDownloadReady && downloadFormat && (
+        <div className="mt-1 text-xs sm:text-sm text-gray-400 text-right">
+          Download ready as {resolvedDownloadFormatLabel}.
+        </div>
       )}
     </div>
   );
