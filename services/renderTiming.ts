@@ -135,12 +135,17 @@ export const buildRenderPlan = (
   const effectiveDurations = computeEffectiveDurations(scenes, mode);
 
   return scenes.map((scene, index) => {
-    const durationSeconds = effectiveDurations[index] ?? 0;
-    const frameCount = Math.max(1, Math.round(durationSeconds * fps));
+    const durationSecondsRaw = effectiveDurations[index] ?? 0;
+    const safeDurationSeconds = durationSecondsRaw > 0.01
+      ? durationSecondsRaw
+      : mode === 'preview'
+        ? PREVIEW_MIN_SCENE_DURATION_SECONDS
+        : Math.max(1.2, 1 / fps);
+    const frameCount = Math.max(1, Math.ceil(safeDurationSeconds * fps));
 
     return {
       scene,
-      durationSeconds,
+      durationSeconds: safeDurationSeconds,
       frameCount,
     };
   });

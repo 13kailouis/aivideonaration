@@ -177,27 +177,364 @@ function drawImageWithKenBurns(
 }
 
 
-function wrapText(ctx: CanvasRenderingContext2D, text: string, x: number, y: number, maxWidth: number, lineHeight: number) {
-  const words = text.split(' ');
-  let line = '';
-  const lines = [];
+const ACCENT_COLOR_PALETTE = [
+  '#FF5F6D',
+  '#FF9966',
+  '#FDCB6E',
+  '#54A0FF',
+  '#5F27CD',
+  '#48DB71',
+  '#FF6B6B',
+  '#1B9CFC',
+  '#FF9FF3',
+  '#10AC84',
+];
 
-  for (let n = 0; n < words.length; n++) {
-    const testLine = line + words[n] + ' ';
-    const metrics = ctx.measureText(testLine);
-    if (metrics.width > maxWidth && n > 0) {
-      lines.push(line.trim());
-      line = words[n] + ' ';
+const KEYWORD_CHIP_LIMIT = 3;
+const SUBTITLE_MAX_WORDS = 42;
+
+const sanitizeSceneText = (value?: string): string =>
+  value ? value.replace(/\s+/g, ' ').trim() : '';
+
+const sceneAccentHash = (value: string): number => {
+  let hash = 0;
+  for (let i = 0; i < value.length; i++) {
+    hash = (hash << 5) - hash + value.charCodeAt(i);
+    hash |= 0;
+  }
+  return hash;
+};
+
+const computeSceneAccentColor = (scene: Scene): string => {
+  const key = `${scene.id}|${scene.keywords?.join('-') ?? ''}|${scene.imagePrompt ?? ''}|${scene.sceneText ?? ''}`;
+  const hash = Math.abs(sceneAccentHash(key));
+  return ACCENT_COLOR_PALETTE[hash % ACCENT_COLOR_PALETTE.length];
+};
+
+const hexToRgb = (hex: string): { r: number; g: number; b: number } | null => {
+  const normalized = hex.replace('#', '');
+  const value = normalized.length === 3
+    ? normalized.split('').map(ch => ch + ch).join('')
+    : normalized;
+  if (value.length !== 6) {
+    return null;
+  }
+  const r = Number.parseInt(value.slice(0, 2), 16);
+  const g = Number.parseInt(value.slice(2, 4), 16);
+  const b = Number.parseInt(value.slice(4, 6), 16);
+  if ([r, g, b].some(component => Number.isNaN(component))) {
+    return null;
+  }
+  return { r, g, b };
+};
+
+const mixHexColors = (hex: string, mixHex: string, weight: number): string => {
+  const base = hexToRgb(hex);
+  const mix = hexToRgb(mixHex);
+  if (!base || !mix) {
+    return hex;
+  }
+  const clamped = Math.max(0, Math.min(1, weight));
+  const r = Math.round(base.r * (1 - clamped) + mix.r * clamped);
+  const g = Math.round(base.g * (1 - clamped) + mix.g * clamped);
+  const b = Math.round(base.b * (1 - clamped) + mix.b * clamped);
+  return `rgb(${r}, ${g}, ${b})`;
+};
+
+const lightenColor = (hex: string, amount: number): string => mixHexColors(hex, '#ffffff', amount);
+const darkenColor = (hex: string, amount: number): string => mixHexColors(hex, '#000000', amount);
+
+const wrapTextIntoLines = (
+  ctx: CanvasRenderingContext2D,
+  text: string,
+  maxWidth: number,
+): string[] => {
+  const words = text.split(/\s+/).filter(Boolean);
+  const lines: string[] = [];
+  let currentLine = '';
+
+  for (const word of words) {
+    const tentative = currentLine ? `${currentLine} ${word}` : word;
+    if (ctx.measureText(tentative).width > maxWidth && currentLine) {
+      lines.push(currentLine);
+      currentLine = word;
     } else {
-      line = testLine;
+      currentLine = tentative;
     }
   }
-  lines.push(line.trim());
 
-  lines.forEach((singleLine, index) => {
-    ctx.fillText(singleLine, x, y + (index * lineHeight));
-  });
+  if (currentLine) {
+    lines.push(currentLine);
+  }
+
+  return lines;
+};
+
+const drawRoundedRectPath = (
+  ctx: CanvasRenderingContext2D,
+  x: number,
+  y: number,
+  width: number,
+  height: number,
+  radius: number,
+): void => {
+  const clampedRadius = Math.max(0, Math.min(radius, Math.min(width, height) / 2));
+  ctx.beginPath();
+  ctx.moveTo(x + clampedRadius, y);
+  ctx.lineTo(x + width - clampedRadius, y);
+  ctx.quadraticCurveTo(x + width, y, x + width, y + clampedRadius);
+  ctx.lineTo(x + width, y + height - clampedRadius);
+  ctx.quadraticCurveTo(x + width, y + height, x + width - clampedRadius, y + height);
+  ctx.lineTo(x + clampedRadius, y + height);
+  ctx.quadraticCurveTo(x, y + height, x, y + height - clampedRadius);
+  ctx.lineTo(x, y + clampedRadius);
+  ctx.quadraticCurveTo(x, y, x + clampedRadius, y);
+  ctx.closePath();
+};
+
+const easeInOutCubic = (value: number): number =>
+  value < 0.5 ? 4 * value * value * value : 1 - Math.pow(-2 * value + 2, 3) / 2;
+
+function drawKeywordChips(
+  ctx: CanvasRenderingContext2D,
+  scene: Scene,
+  accentColor: string,
+  canvasWidth: number,
+  _canvasHeight: number,
+  overlayTop: number,
+  basePadding: number,
+  overlayAlpha: number,
+  accentBarWidth: number,
+  baseFontSize: number,
+): void {
+  const keywords = (scene.keywords || []).filter(Boolean).slice(0, KEYWORD_CHIP_LIMIT);
+  if (keywords.length === 0) {
+    return;
+  }
+
+  const chipFontSize = Math.max(14, Math.round(baseFontSize * 0.55));
+  const chipPaddingX = Math.round(chipFontSize * 0.7);
+  const chipPaddingY = Math.round(chipFontSize * 0.5);
+  const startingX = basePadding + accentBarWidth + basePadding * 0.5;
+  let chipX = startingX;
+  const chipY = Math.max(basePadding, overlayTop - chipFontSize - basePadding * 0.6);
+  const maxX = canvasWidth - basePadding;
+
+  ctx.save();
+  ctx.globalAlpha = Math.min(1, overlayAlpha * 0.95);
+  ctx.font = `600 ${chipFontSize}px "Inter", "Helvetica Neue", "Arial", sans-serif`;
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'middle';
+
+  for (const keyword of keywords) {
+    const sanitized = keyword.replace(/[^a-z0-9\s]/gi, ' ').trim();
+    if (!sanitized) {
+      continue;
+    }
+    const label = `#${sanitized.replace(/\s+/g, '').toUpperCase()}`;
+    const textWidth = ctx.measureText(label).width;
+    const chipWidth = textWidth + chipPaddingX * 2;
+    const chipHeight = chipFontSize + chipPaddingY * 2;
+    if (chipX + chipWidth > maxX) {
+      break;
+    }
+
+    drawRoundedRectPath(ctx, chipX, chipY, chipWidth, chipHeight, chipHeight / 2);
+    ctx.fillStyle = 'rgba(0, 0, 0, 0.55)';
+    ctx.fill();
+    ctx.strokeStyle = accentColor;
+    ctx.lineWidth = Math.max(1, Math.round(chipFontSize * 0.12));
+    ctx.stroke();
+
+    ctx.fillStyle = 'white';
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.45)';
+    ctx.shadowBlur = Math.round(chipFontSize * 0.5);
+    ctx.shadowOffsetY = Math.round(chipFontSize * 0.15);
+    ctx.fillText(label, chipX + chipWidth / 2, chipY + chipHeight / 2 + 0.5);
+
+    chipX += chipWidth + chipPaddingX * 0.7;
+  }
+
+  ctx.restore();
 }
+
+function drawSceneTextOverlay(
+  ctx: CanvasRenderingContext2D,
+  scene: Scene,
+  canvasWidth: number,
+  canvasHeight: number,
+  progressInScene: number,
+  accentColorOverride?: string,
+): void {
+  const sanitized = sanitizeSceneText(scene.sceneText);
+  if (!sanitized) {
+    return;
+  }
+
+  const accentColor = accentColorOverride ?? computeSceneAccentColor(scene);
+  const easedProgress = easeInOutCubic(Math.max(0, Math.min(1, progressInScene)));
+  const revealRatio = 0.45 + 0.55 * easedProgress;
+  const words = sanitized.split(' ');
+  const limitedWords = words.slice(0, Math.min(SUBTITLE_MAX_WORDS, words.length));
+  const visibleWordCount = easedProgress >= 0.98
+    ? limitedWords.length
+    : Math.max(1, Math.floor(limitedWords.length * revealRatio));
+  const textToDisplay = limitedWords.slice(0, visibleWordCount).join(' ');
+
+  if (!textToDisplay) {
+    return;
+  }
+
+  const basePadding = Math.round(canvasWidth * 0.06);
+  const maxWidth = canvasWidth - basePadding * 2;
+  const fontSize = Math.max(26, Math.round(canvasHeight * 0.062));
+  const lineHeight = fontSize * 1.12;
+
+  ctx.save();
+  ctx.font = `700 ${fontSize}px "Inter", "Helvetica Neue", "Arial", sans-serif`;
+  const lines = wrapTextIntoLines(ctx, textToDisplay.toUpperCase(), maxWidth);
+  const maxLines = canvasHeight < 720 ? 3 : 4;
+  const trimmedLines = lines.slice(0, maxLines);
+  if (trimmedLines.length === 0) {
+    ctx.restore();
+    return;
+  }
+
+  const textBlockHeight = trimmedLines.length * lineHeight;
+  const overlayHeight = textBlockHeight + basePadding * 1.8;
+  const overlayTop = canvasHeight - overlayHeight;
+  const overlayAlpha = Math.min(1, 0.25 + easedProgress * 0.9);
+
+  const gradient = ctx.createLinearGradient(0, overlayTop - basePadding, 0, canvasHeight);
+  gradient.addColorStop(0, 'rgba(0, 0, 0, 0)');
+  gradient.addColorStop(1, 'rgba(0, 0, 0, 0.85)');
+
+  ctx.save();
+  ctx.globalAlpha = overlayAlpha;
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, overlayTop - basePadding, canvasWidth, overlayHeight + basePadding * 1.5);
+  ctx.restore();
+
+  const accentBarWidth = Math.max(6, Math.round(canvasWidth * 0.012));
+  ctx.save();
+  ctx.globalAlpha = overlayAlpha;
+  ctx.fillStyle = accentColor;
+  ctx.fillRect(basePadding * 0.55, overlayTop + basePadding * 0.65, accentBarWidth, overlayHeight - basePadding * 1.3);
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = overlayAlpha;
+  ctx.font = `700 ${fontSize}px "Inter", "Helvetica Neue", "Arial", sans-serif`;
+  ctx.fillStyle = 'white';
+  ctx.textAlign = 'left';
+  ctx.textBaseline = 'alphabetic';
+  ctx.shadowColor = 'rgba(0, 0, 0, 0.65)';
+  ctx.shadowBlur = Math.round(fontSize * 0.45);
+  ctx.shadowOffsetY = Math.round(fontSize * 0.18);
+
+  trimmedLines.forEach((line, index) => {
+    const y = overlayTop + basePadding + (index + 1) * lineHeight;
+    ctx.fillText(line, basePadding + accentBarWidth + basePadding * 0.5, y);
+  });
+  ctx.restore();
+
+  drawKeywordChips(
+    ctx,
+    scene,
+    accentColor,
+    canvasWidth,
+    canvasHeight,
+    overlayTop,
+    basePadding,
+    overlayAlpha,
+    accentBarWidth,
+    fontSize,
+  );
+
+  ctx.restore();
+}
+
+const convertCanvasToImage = async (canvas: HTMLCanvasElement): Promise<HTMLImageElement> => {
+  const dataUrl = canvas.toDataURL('image/png');
+  const image = new Image();
+  image.src = dataUrl;
+  if (typeof image.decode === 'function') {
+    try {
+      await image.decode();
+    } catch {
+      // ignore decode errors and fall back to load event
+    }
+  }
+  if (!image.complete) {
+    await new Promise<void>(resolve => {
+      image.onload = () => resolve();
+      image.onerror = () => resolve();
+    });
+  }
+  return image;
+};
+
+const createStylizedFallbackImage = async (
+  scene: Scene,
+  aspectRatio: AspectRatio,
+): Promise<HTMLImageElement> => {
+  const width = aspectRatio === '16:9' ? 1280 : Math.round(1280 * 9 / 16);
+  const height = aspectRatio === '16:9' ? Math.round((width * 9) / 16) : 1280;
+  const canvas = document.createElement('canvas');
+  canvas.width = width;
+  canvas.height = height;
+  const ctx = canvas.getContext('2d');
+
+  if (!ctx) {
+    const fallbackImg = new Image();
+    fallbackImg.src = FALLBACK_BASE64_IMAGE;
+    if (!fallbackImg.complete) {
+      await new Promise<void>(resolve => {
+        fallbackImg.onload = () => resolve();
+        fallbackImg.onerror = () => resolve();
+      });
+    }
+    return fallbackImg;
+  }
+
+  ctx.imageSmoothingQuality = 'high';
+
+  const accentColor = computeSceneAccentColor(scene);
+  const gradient = ctx.createLinearGradient(0, 0, width, height);
+  gradient.addColorStop(0, lightenColor(accentColor, 0.45));
+  gradient.addColorStop(1, darkenColor(accentColor, 0.35));
+  ctx.fillStyle = gradient;
+  ctx.fillRect(0, 0, width, height);
+
+  ctx.save();
+  ctx.globalAlpha = 0.22;
+  const stripeColor = lightenColor(accentColor, 0.6);
+  const stripeWidth = Math.max(width, height) / 3.2;
+  for (let offset = -height; offset < width * 1.5; offset += stripeWidth * 0.75) {
+    ctx.fillStyle = stripeColor;
+    ctx.beginPath();
+    ctx.moveTo(offset, 0);
+    ctx.lineTo(offset + stripeWidth, 0);
+    ctx.lineTo(offset + stripeWidth * 0.4, height);
+    ctx.lineTo(offset - stripeWidth * 0.6, height);
+    ctx.closePath();
+    ctx.fill();
+  }
+  ctx.restore();
+
+  ctx.save();
+  ctx.globalAlpha = 0.28;
+  ctx.fillStyle = 'rgba(0, 0, 0, 0.35)';
+  const ellipseRadius = Math.max(width, height) * 0.55;
+  ctx.beginPath();
+  ctx.ellipse(width * 0.72, height * 0.32, ellipseRadius, ellipseRadius * 0.55, Math.PI / 8, 0, Math.PI * 2);
+  ctx.fill();
+  ctx.restore();
+
+  drawSceneTextOverlay(ctx, scene, width, height, 1, accentColor);
+
+  return convertCanvasToImage(canvas);
+};
 
 
 function drawWatermark(ctx: CanvasRenderingContext2D, canvasWidth: number, canvasHeight: number, text: string) {
@@ -210,17 +547,23 @@ function drawWatermark(ctx: CanvasRenderingContext2D, canvasWidth: number, canva
 
 async function loadImageWithRetries(
   src: string,
-  sceneId: string,
+  scene: Scene,
   sceneIndexForLog: number,
+  aspectRatio: AspectRatio,
   signal?: AbortSignal,
 ): Promise<HTMLImageElement> {
+  if (!src) {
+    console.warn(`[Video Rendering Service] Scene ${sceneIndexForLog + 1} has no image source. Generating fallback visual.`);
+    return createStylizedFallbackImage(scene, aspectRatio);
+  }
+
   for (let attempt = 0; attempt <= IMAGE_LOAD_RETRIES; attempt++) {
     try {
       throwIfAborted(signal);
       const image = await new Promise<HTMLImageElement>((resolve, reject) => {
         const img = new Image();
         if (!src.startsWith('data:')) {
-            img.crossOrigin = "anonymous";
+          img.crossOrigin = 'anonymous';
         }
         img.decoding = 'async';
         function cleanup() {
@@ -239,12 +582,12 @@ async function loadImageWithRetries(
           resolve(img);
         };
         img.onerror = (eventOrMessage) => {
-          let errorMessage = `Failed to load image for scene ${sceneIndexForLog + 1} (ID: ${sceneId}, URL: ${src.substring(0,100)}...), attempt ${attempt + 1}/${IMAGE_LOAD_RETRIES + 1}.`;
-            if (typeof eventOrMessage === 'string') {
-                errorMessage += ` Details: ${eventOrMessage}`;
-            } else if (eventOrMessage && (eventOrMessage as Event).type) {
-                errorMessage += ` Event type: ${(eventOrMessage as Event).type}.`;
-            }
+          let errorMessage = `Failed to load image for scene ${sceneIndexForLog + 1} (ID: ${scene.id}, URL: ${src.substring(0, 100)}...), attempt ${attempt + 1}/${IMAGE_LOAD_RETRIES + 1}.`;
+          if (typeof eventOrMessage === 'string') {
+            errorMessage += ` Details: ${eventOrMessage}`;
+          } else if (eventOrMessage && (eventOrMessage as Event).type) {
+            errorMessage += ` Event type: ${(eventOrMessage as Event).type}.`;
+          }
           cleanup();
           reject(new Error(errorMessage));
         };
@@ -275,36 +618,27 @@ async function loadImageWithRetries(
         const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
         await new Promise(res => setTimeout(res, delay));
       } else {
-        console.error(`All ${IMAGE_LOAD_RETRIES + 1} attempts to load image for scene ${sceneIndexForLog + 1} failed. Using fallback image.`);
-        const fallbackImg = new Image();
-        fallbackImg.src = FALLBACK_BASE64_IMAGE;
-        if (!fallbackImg.complete) {
-          await new Promise(res => {
-            fallbackImg.onload = () => res(null);
-          });
-        }
-        throwIfAborted(signal);
-        return fallbackImg;
+        console.error(`All ${IMAGE_LOAD_RETRIES + 1} attempts to load image for scene ${sceneIndexForLog + 1} failed. Using stylized fallback.`);
+        return createStylizedFallbackImage(scene, aspectRatio);
       }
     }
   }
-  const fallbackImg = new Image();
-  fallbackImg.src = FALLBACK_BASE64_IMAGE;
-  if (!fallbackImg.complete) {
-    await new Promise(res => {
-      fallbackImg.onload = () => res(null);
-    });
-  }
-  throwIfAborted(signal);
-  return fallbackImg;
+
+  return createStylizedFallbackImage(scene, aspectRatio);
 }
 
 async function loadVideoFrameWithRetries(
   src: string,
-  sceneId: string,
+  scene: Scene,
   sceneIndexForLog: number,
+  aspectRatio: AspectRatio,
   signal?: AbortSignal,
 ): Promise<HTMLImageElement> {
+  if (!src) {
+    console.warn(`[Video Rendering Service] Scene ${sceneIndexForLog + 1} has no video source. Generating fallback visual.`);
+    return createStylizedFallbackImage(scene, aspectRatio);
+  }
+
   for (let attempt = 0; attempt <= IMAGE_LOAD_RETRIES; attempt++) {
     try {
       throwIfAborted(signal);
@@ -346,8 +680,11 @@ async function loadVideoFrameWithRetries(
             reject(err);
           }
         };
-        video.onerror = (e) => {
-          const errorMessage = `Failed to load video for scene ${sceneIndexForLog + 1} (ID: ${sceneId}, URL: ${src.substring(0,100)}...), attempt ${attempt + 1}/${IMAGE_LOAD_RETRIES + 1}.`;
+        video.onerror = (eventOrMessage) => {
+          let errorMessage = `Failed to load video for scene ${sceneIndexForLog + 1} (ID: ${scene.id}, URL: ${src.substring(0, 100)}...), attempt ${attempt + 1}/${IMAGE_LOAD_RETRIES + 1}.`;
+          if (eventOrMessage && (eventOrMessage as Event).type) {
+            errorMessage += ` Event type: ${(eventOrMessage as Event).type}.`;
+          }
           cleanup();
           reject(new Error(errorMessage));
         };
@@ -379,28 +716,13 @@ async function loadVideoFrameWithRetries(
         const delay = INITIAL_RETRY_DELAY_MS * Math.pow(2, attempt);
         await new Promise(res => setTimeout(res, delay));
       } else {
-        console.error(`All ${IMAGE_LOAD_RETRIES + 1} attempts to load video for scene ${sceneIndexForLog + 1} failed. Using fallback image.`);
-        const fallbackImg = new Image();
-        fallbackImg.src = FALLBACK_BASE64_IMAGE;
-        if (!fallbackImg.complete) {
-          await new Promise(res => {
-            fallbackImg.onload = () => res(null);
-          });
-        }
-        throwIfAborted(signal);
-        return fallbackImg;
+        console.error(`All ${IMAGE_LOAD_RETRIES + 1} attempts to load video for scene ${sceneIndexForLog + 1} failed. Using stylized fallback.`);
+        return createStylizedFallbackImage(scene, aspectRatio);
       }
     }
   }
-  const fallbackImg = new Image();
-  fallbackImg.src = FALLBACK_BASE64_IMAGE;
-  if (!fallbackImg.complete) {
-    await new Promise(res => {
-      fallbackImg.onload = () => res(null);
-    });
-  }
-  throwIfAborted(signal);
-  return fallbackImg;
+
+  return createStylizedFallbackImage(scene, aspectRatio);
 }
 
 async function createPreloadedImageFromElement(
@@ -444,37 +766,47 @@ async function createPreloadedImageFromElement(
 }
 
 async function preloadAllImages(
-    scenes: Scene[],
-    onProgress: (message: string, value: number) => void,
-    signal?: AbortSignal,
+  scenes: Scene[],
+  aspectRatio: AspectRatio,
+  onProgress: (message: string, value: number) => void,
+  signal?: AbortSignal,
 ): Promise<PreloadedImage[]> {
-    onProgress("Preloading images...", 0);
-    const results: PreloadedImage[] = [];
-    const concurrency = Math.min(resolvePreloadConcurrency(), scenes.length || MIN_PRELOAD_CONCURRENCY);
-    let index = 0;
-    let completed = 0;
+  onProgress('Preloading images...', 0);
+  const results: PreloadedImage[] = [];
+  const concurrency = Math.min(resolvePreloadConcurrency(), scenes.length || MIN_PRELOAD_CONCURRENCY);
+  let index = 0;
+  let completed = 0;
 
-    async function worker() {
-        while (true) {
-            throwIfAborted(signal);
-            const i = index++;
-            if (i >= scenes.length) {
-                return;
-            }
-            const scene = scenes[i];
-            const baseImage = scene.footageType === 'video'
-              ? await loadVideoFrameWithRetries(scene.footageUrl, scene.id, i, signal)
-              : await loadImageWithRetries(scene.footageUrl, scene.id, i, signal);
-            const prepared = await createPreloadedImageFromElement(scene.id, baseImage, signal);
-            results.push(prepared);
-            completed++;
-            onProgress(`Preloading images... (${completed}/${scenes.length})`, completed / scenes.length);
+  async function worker() {
+    while (true) {
+      throwIfAborted(signal);
+      const i = index++;
+      if (i >= scenes.length) {
+        return;
+      }
+      const scene = scenes[i];
+      let baseImage: HTMLImageElement;
+      try {
+        baseImage = scene.footageType === 'video'
+          ? await loadVideoFrameWithRetries(scene.footageUrl, scene, i, aspectRatio, signal)
+          : await loadImageWithRetries(scene.footageUrl, scene, i, aspectRatio, signal);
+      } catch (error) {
+        if (isAbortError(error)) {
+          throw error;
         }
+        console.warn(`[Video Rendering Service] Preloading fallback for scene ${i + 1} due to error: ${(error as Error).message}`);
+        baseImage = await createStylizedFallbackImage(scene, aspectRatio);
+      }
+      const prepared = await createPreloadedImageFromElement(scene.id, baseImage, signal);
+      results.push(prepared);
+      completed += 1;
+      onProgress(`Preloading images... (${completed}/${scenes.length})`, completed / scenes.length);
     }
+  }
 
-    await Promise.all(Array.from({ length: Math.max(1, concurrency) }, () => worker()));
-    onProgress("All images preloaded.", 1);
-    return results;
+  await Promise.all(Array.from({ length: Math.max(1, concurrency) }, () => worker()));
+  onProgress('All images preloaded.', 1);
+  return results;
 }
 
 
@@ -509,7 +841,7 @@ const generateVideoWithWebCodecs = (
         }
       };
 
-      preloadedImages = await preloadAllImages(scenes, (_msg, val) => {
+      preloadedImages = await preloadAllImages(scenes, aspectRatio, (_msg, val) => {
         updateOverallProgress(val, 0.2, 0);
       }, signal);
 
@@ -517,6 +849,10 @@ const generateVideoWithWebCodecs = (
 
       const imageMap = new Map<string, PreloadedImage>();
       preloadedImages.forEach(item => imageMap.set(item.sceneId, item));
+      const accentColorMap = new Map<string, string>();
+      scenes.forEach(scene => {
+        accentColorMap.set(scene.id, computeSceneAccentColor(scene));
+      });
 
       const mode = options.mode ?? 'preview';
       const renderPlan = buildRenderPlan(scenes, config.fps, mode);
@@ -724,10 +1060,12 @@ const generateVideoWithWebCodecs = (
         }
 
         const numFramesForScene = frameCount;
+        const accentColor = accentColorMap.get(scene.id) ?? computeSceneAccentColor(scene);
         for (let frameIndex = 0; frameIndex < numFramesForScene; frameIndex++) {
           throwIfAborted(signal);
           const progressInThisScene = numFramesForScene <= 1 ? 1 : frameIndex / (numFramesForScene - 1);
           drawImageWithKenBurns(ctx, img, canvasWidth, canvasHeight, progressInThisScene, scene.kenBurnsConfig);
+          drawSceneTextOverlay(ctx, scene, canvasWidth, canvasHeight, progressInThisScene, accentColor);
           if (options.includeWatermark) {
             drawWatermark(ctx, canvasWidth, canvasHeight, WATERMARK_TEXT);
           }
@@ -866,11 +1204,15 @@ const generateWebMWithMediaRecorder = (
         }
       };
 
-      preloadedImages = await preloadAllImages(scenes, (_msg, val) => {
+      preloadedImages = await preloadAllImages(scenes, aspectRatio, (_msg, val) => {
         updateOverallProgress(val, 0.2, 0);
       }, signal);
 
       preloadedImages.forEach(item => preloadedImageMap.set(item.sceneId, item));
+      const accentColorMap = new Map<string, string>();
+      scenes.forEach(scene => {
+        accentColorMap.set(scene.id, computeSceneAccentColor(scene));
+      });
 
       throwIfAborted(signal);
 
@@ -1044,9 +1386,11 @@ const generateWebMWithMediaRecorder = (
 
         const numFramesForThisScene = planItem.frameCount;
         const progressInThisScene = numFramesForThisScene <= 1 ? 1 : currentFrameInScene / (numFramesForThisScene - 1);
+        const accentColor = accentColorMap.get(scene.id) ?? computeSceneAccentColor(scene);
 
         try {
           drawImageWithKenBurns(ctx, preloadedImgData, canvasWidth, canvasHeight, progressInThisScene, scene.kenBurnsConfig);
+          drawSceneTextOverlay(ctx, scene, canvasWidth, canvasHeight, progressInThisScene, accentColor);
           if (options.includeWatermark) {
             drawWatermark(ctx, canvasWidth, canvasHeight, WATERMARK_TEXT);
           }
