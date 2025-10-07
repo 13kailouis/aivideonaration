@@ -73,3 +73,8 @@ export const QuoteIcon: React.FC<{ className?: string }> = ({ className }) => (
     <path d="M7.5 5C5.015 5 3 7.015 3 9.5S5.015 14 7.5 14c.047 0 .093 0 .139-.002A3.48 3.48 0 0 0 7 15.5c0 1.933 1.567 3.5 3.5 3.5V17C8.57 17 7 15.43 7 13.5c0-.646.17-1.252.469-1.777C7.316 11.745 7.167 11.5 7 11.5 5.067 11.5 3.5 9.933 3.5 8S5.067 4.5 7 4.5h.5V5Zm9 0C14.015 5 12 7.015 12 9.5s2.015 4.5 4.5 4.5c.047 0 .093 0 .139-.002A3.48 3.48 0 0 0 16 15.5c0 1.933 1.567 3.5 3.5 3.5V17c-1.93 0-3.5-1.57-3.5-3.5 0-.646.17-1.252.469-1.777.157-.478.006-.723-.163-.723-1.933 0-3.5-1.567-3.5-3.5S14.567 5 16.5 5H17v.5h-.5Z"/>
   </svg>
 );
+export const UpArrowIcon: React.FC<{ className?: string }> = ({ className }) => (
+  <svg className={className} xmlns="http://www.w3.org/2000/svg" fill="none" viewBox="0 0 24 24" strokeWidth={2} stroke="currentColor">
+    <path strokeLinecap="round" strokeLinejoin="round" d="M5 15l7-7 7 7" />
+  </svg>
+);
