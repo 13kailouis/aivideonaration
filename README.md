@@ -33,6 +33,10 @@ Development mode automatically provides the required cross-origin isolation head
 
 By default the browser-based conversion uses the `ultrafast` preset for speed. Edit `services/mp4ConversionService.ts` if you prefer higher quality.
 
+## Mobile-Friendly Design
+
+CineSynth now includes improved support for smartphones. The application layout adapts to smaller screens and the viewport settings allow pinch‑to‑zoom for better accessibility.
+
 ## Deployment
 
 When deploying to Vercel, create a `vercel.json` file so each request includes the cross-origin headers needed by ffmpeg.wasm:
